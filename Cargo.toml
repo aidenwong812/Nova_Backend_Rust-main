@@ -1,0 +1,3 @@
+[workspace]
+members=[ "backend", "db",  "nova-client", "searcher-client","sei-client" ]
+
