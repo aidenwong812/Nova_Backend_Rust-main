@@ -111,7 +111,7 @@ async fn test_route_nfts() {
     )
     .await;
 
-    let wallet_address="sei10l9hc655uyzwv5xq5ww3l6h93tccwyuljnrk03";
+    let wallet_address="sei18p7ed62cm4q67ghfq9dwwfaehszphsf3whkws3";
 
 
     // test get user nfts holding
@@ -121,7 +121,7 @@ async fn test_route_nfts() {
         .to_request();
     let get_user_holding_nfts_resp = actix_web::test::call_service(&app, get_user_holding_nfts_resp).await;
     assert!(get_user_holding_nfts_resp.status().is_success());
-    println!("{:?}",&get_user_holding_nfts_resp.into_body());
+    // println!("{:?}",&get_user_holding_nfts_resp.into_body());
     
 
 
@@ -132,6 +132,7 @@ async fn test_route_nfts() {
         .to_request();
     let get_user_income_nfts_resp = actix_web::test::call_service(&app, get_user_income_nfts_resp).await;
     assert!(get_user_income_nfts_resp.status().is_success());
+    println!("{:?}",&get_user_income_nfts_resp.into_body());
 
 
      // test get user holding nfts top

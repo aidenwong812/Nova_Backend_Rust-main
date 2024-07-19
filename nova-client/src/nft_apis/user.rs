@@ -14,7 +14,6 @@ use std::mem::MaybeUninit;
 pub async fn get_user_nfts_holidng(wallet_address:&str,conn:&mut PgConnection ) -> Option<UserNftHolding>{
     
     
-    
     let add_ck_hashmap=|holding_nfts:&Vec<Collection>,ck_hashmap:&mut HashMap<String,Vec<String>>| {
         
         holding_nfts.iter().for_each(|collection|{
@@ -309,41 +308,299 @@ pub async fn get_user_nfts_holidng(wallet_address:&str,conn:&mut PgConnection ) 
 }
 
 
-// 在 holding nfts 的基础上，判断 unrealized_gains 大于0;
-pub async fn get_user_income_holding_nfts(wallet_address:&str,conn:&mut PgConnection) -> Option<UserNftHolding> {
-    
-    if let Some(mut user_nfts_holding_data) =get_user_nfts_holidng(wallet_address, conn).await  {
-        
-        let  user_nfts_holding=&mut user_nfts_holding_data.collections;
 
-        user_nfts_holding.retain_mut(|collection|{
-            let  holding_nft=&mut collection.nfts_holding;
-            
-            holding_nft.retain(|nft|{
-                if let Some(unrealized_gains) =&nft.unrealized_gains  {
-                    let unrealized_gains=unrealized_gains.get(0..unrealized_gains.len()-4).unwrap().parse::<i64>().unwrap();
-                    unrealized_gains>0
-                }else {
-                    nft.unrealized_gains .is_some()
-                }
-            });
-            
-            holding_nft.len()!=0
+pub async fn get_user_income_holding_nfts(wallet_address:&str,conn:&mut PgConnection) -> Option<Vec<IncomeNfts>> {
+    
+    if let Some(user)=search_user(wallet_address, conn).await{
+        
+        let mut result:Vec<IncomeNfts>=vec![];
+        let mut result_hashmap:HashMap<String,Vec<IncomeNft>>=HashMap::new();
+
+        let nft_transactions=user.nfts_transactions;
+        let mut buy_transactions:Vec<NftTransaction_>=vec![];
+        let mut sell_transactions:Vec<NftTransaction_>=vec![];
+
+        nft_transactions.iter().for_each(|transaction|{
+            match transaction.to_owned().transaction {
+                _NftTransaction::AcceptBid(data)=>{
+                    if &data.transfer.recipient==wallet_address{
+                        buy_transactions.push(NftTransaction_{
+                            collection:data.transfer.collection,
+                            token_id:data.transfer.token_id,
+                            marketplace_fee:data.marketplace_fee,
+                            sale_price:data.sale_price,
+                            royalties_fee:data.royalties,
+                            ts:data.transfer.ts
+                        });
+                    }else if &data.transfer.sender == wallet_address {
+                        sell_transactions.push(NftTransaction_ { 
+                            collection: data.transfer.collection, 
+                            token_id: data.transfer.token_id, 
+                            marketplace_fee:data.marketplace_fee, 
+                            sale_price: data.sale_price, 
+                            royalties_fee: data.royalties,
+                            ts:data.transfer.ts})
+                    }
+                },
+                _NftTransaction::BatchBids(data)=>{
+
+                    let marketplace_fee=format!("{}usei",((data.sale_price.clone().get(0..data.sale_price.len()-4).unwrap().parse::<f64>().unwrap()) *0.2 ) as u64 );
+                    if &data.transfer.recipient == wallet_address{
+                        buy_transactions.push(NftTransaction_ { 
+                            collection: data.transfer.collection, 
+                            token_id: data.transfer.token_id, 
+                            marketplace_fee: marketplace_fee,
+                            sale_price: data.sale_price.clone(), 
+                            royalties_fee: "0usei".to_string(),
+                            ts:data.transfer.ts,})
+                    }else if &data.transfer.sender==wallet_address {
+                        sell_transactions.push(NftTransaction_ { 
+                            collection: data.transfer.collection,  
+                            token_id: data.transfer.token_id, 
+                            marketplace_fee: marketplace_fee,
+                            sale_price: data.sale_price.clone(), 
+                            royalties_fee: "0usei".to_string(), 
+                            ts:data.transfer.ts, })
+                    }
+                 
+                },
+                _NftTransaction::CancelAuction(data)=>{
+                    let marketplace_fee=format!("{}usei",((data.auction_price.clone().get(0..data.auction_price.len()-4).unwrap().parse::<f64>().unwrap()) *0.2 ) as u64 );
+                    if &data.transfer.recipient == wallet_address{
+                        buy_transactions.push(NftTransaction_ { 
+                            collection: data.transfer.collection, 
+                            token_id: data.transfer.token_id, 
+                            marketplace_fee: marketplace_fee, 
+                            sale_price: data.auction_price, 
+                            royalties_fee: "0usei".to_string(),
+                            ts:data.transfer.ts })
+                    }else if &data.transfer.sender ==wallet_address{
+                        sell_transactions.push(NftTransaction_ { 
+                            collection: data.transfer.collection, 
+                            token_id: data.transfer.token_id, 
+                            marketplace_fee: marketplace_fee, 
+                            sale_price: data.auction_price, 
+                            royalties_fee: "0usei".to_string(),
+                            ts:data.transfer.ts })
+                    }
+                },
+                _NftTransaction::CretaeAuction(data)=>{
+                    let marketplace_fee=format!("{}usei",((data.auction_price.clone().get(0..data.auction_price.len()-4).unwrap().parse::<f64>().unwrap()) *0.2 ) as u64 );
+                    if &data.transfer.recipient == wallet_address{
+                        buy_transactions.push(NftTransaction_ { 
+                            collection: data.transfer.collection, 
+                            token_id: data.transfer.token_id, 
+                            marketplace_fee: marketplace_fee, 
+                            sale_price: data.auction_price, 
+                            royalties_fee: "0usei".to_string(),
+                            ts:data.transfer.ts })
+                    }else if &data.transfer.sender ==wallet_address{
+                        sell_transactions.push(NftTransaction_ { 
+                            collection: data.transfer.collection, 
+                            token_id: data.transfer.token_id, 
+                            marketplace_fee: marketplace_fee, 
+                            sale_price: data.auction_price, 
+                            royalties_fee: "0usei".to_string(),
+                            ts:data.transfer.ts })
+                    }
+
+                    
+                },
+                _NftTransaction::FixedSell(data)=>{
+                    if &data.transfer.recipient == wallet_address{
+                        buy_transactions.push(NftTransaction_ { 
+                            collection: data.transfer.collection, 
+                            token_id: data.transfer.token_id, 
+                            marketplace_fee: "0usei".to_string(), 
+                            sale_price: format!("{}usei",data.price), 
+                            royalties_fee: "0usei".to_string(),
+                            ts:data.transfer.ts })
+                    }else if &data.transfer.sender ==wallet_address {
+                        sell_transactions.push(NftTransaction_ { 
+                            collection: data.transfer.collection, 
+                            token_id: data.transfer.token_id, 
+                            marketplace_fee: "0usei".to_string(), 
+                            sale_price: format!("{}usei",data.price), 
+                            royalties_fee: "0usei".to_string() ,
+                            ts:data.transfer.ts})
+                    }
+                },
+                _NftTransaction::Mint(data)=>{
+                    sell_transactions.push(NftTransaction_ { 
+                        collection: data.collection, 
+                        token_id: data.token_id, 
+                        marketplace_fee: "0usei".to_string(), 
+                        sale_price:format!("{}usei",data.price), 
+                        royalties_fee: "0usei".to_string(), 
+                        ts:data.ts })
+                },
+                _NftTransaction::OnlyTransfer(data)=>{
+                    if &data.recipient == wallet_address{
+                        buy_transactions.push(NftTransaction_ { 
+                            collection: data.collection, 
+                            token_id: data.token_id, 
+                            marketplace_fee: "0usei".to_string(), 
+                            sale_price: "0usei".to_string(), 
+                            royalties_fee: "0usei".to_string(),
+                            ts:data.ts })
+                    }else if &data.sender==wallet_address {
+                        sell_transactions.push(NftTransaction_ { 
+                            collection: data.collection, 
+                            token_id: data.token_id, 
+                            marketplace_fee: "0usei".to_string(), 
+                            sale_price: "0usei".to_string(), 
+                            royalties_fee: "0usei".to_string(),
+                            ts:data.ts })
+                    }
+                },
+                _NftTransaction::PurchaseCart(data)=>{
+                    if &data.transfer.recipient == wallet_address{
+                        buy_transactions.push(NftTransaction_ { 
+                            collection: data.transfer.collection, 
+                            token_id: data.transfer.token_id, 
+                            marketplace_fee: data.marketplace_fee, 
+                            sale_price: data.sale_price, 
+                            royalties_fee: data.royalties,
+                            ts:data.transfer.ts })
+                    }else if &data.transfer.sender==wallet_address {
+                        sell_transactions.push(NftTransaction_ { 
+                            collection: data.transfer.collection, 
+                            token_id: data.transfer.token_id, 
+                            marketplace_fee:data.marketplace_fee, 
+                            sale_price: data.sale_price, 
+                            royalties_fee: data.royalties,
+                            ts:data.transfer.ts })
+                    }
+                    
+                },
+                _=>{},
+            }
         });
 
+        let mut buys:HashMap<String,HashMap<String,Vec<NftTransaction_>>>=HashMap::new();
+        let mut sells:HashMap<String,HashMap<String,Vec<NftTransaction_>>>=HashMap::new();
+
+        buy_transactions.iter().for_each(|buy_transaction|{
+            buys.entry(buy_transaction.collection.clone())
+                .or_insert_with(HashMap::new)
+                .entry(buy_transaction.token_id.clone())
+                .or_insert_with(Vec::new)
+                .push(buy_transaction.clone())
+        });
+
+        sell_transactions.iter().for_each(|sell_transaction|{
+            sells.entry(sell_transaction.collection.clone())
+                .or_insert_with(HashMap::new)
+                .entry(sell_transaction.token_id.clone())
+                .or_insert_with(Vec::new)
+                .push(sell_transaction.clone())
+        });
+
+        let now = Utc::now();
+        buys.iter_mut().for_each(|(collection,token_id)|{
+            token_id.iter_mut().for_each(|(token_id,transactions)|{
+                
+                let mut shortest_diff: Option<Duration> = None;
+                let mut closest_transaction: Option<&NftTransaction_> = None;
+
+                transactions.iter().for_each(|transaction|{
+                    let time=DateTime::parse_from_rfc3339(&transaction.ts).unwrap().with_timezone(&Utc);
+                    let time_diff=now.signed_duration_since(time);
+
+                    if shortest_diff.map_or(true, |d| time_diff<d){
+                        shortest_diff=Some(time_diff);
+                        closest_transaction=Some(transaction)
+                    }
+                    
+                });
+                
+                if let Some(closest_transaction) = closest_transaction {
+                    let time=closest_transaction.ts.clone();
+                    transactions.retain(|transaction| transaction.ts==time);
+                }
+            })
+        });
+
+        sells.iter_mut().for_each(|(collection,token_id)|{
+            token_id.iter_mut().for_each(|(token_id,transactions)|{
+                
+                let mut shortest_diff: Option<Duration> = None;
+                let mut closest_transaction: Option<&NftTransaction_> = None;
+
+                transactions.iter().for_each(|transaction|{
+                    let time=DateTime::parse_from_rfc3339(&transaction.ts).unwrap().with_timezone(&Utc);
+                    let time_diff=now.signed_duration_since(time);
+
+                    if shortest_diff.map_or(true, |d| time_diff<d){
+                        shortest_diff=Some(time_diff);
+                        closest_transaction=Some(transaction)
+                    }
+                    
+                });
+                
+                if let Some(closest_transaction) = closest_transaction {
+                    let time=closest_transaction.ts.clone();
+                    transactions.retain(|transaction| transaction.ts==time);
+                }
+            })
+        });
+
+        for (buy,sell) in buys.iter().zip(sells.iter()){
+            if buy.0 == sell.0 {
+                for (buy_,sell_) in buy.1.iter().zip(sell.1.iter()){
+                    if buy_.0==sell_.0{
+                        let buy_time=DateTime::parse_from_rfc3339(&buy_.1[0].ts).unwrap();
+                        let sell_time=DateTime::parse_from_rfc3339(&sell_.1[0].ts).unwrap();
+
+                        match buy_time.cmp(&sell_time) {
+                            std::cmp::Ordering::Less=>{
+                                
+                                let buy_price=&buy_.1[0].sale_price.to_owned();
+                                let sell_pirce=&sell_.1[0].sale_price.to_owned();
+                                
+                                let buy_market_fee=&buy_.1[0].marketplace_fee.to_owned();
+                                let buy_royalties_fee=&buy_.1[0].royalties_fee.to_owned();
 
 
-        if user_nfts_holding.len()>0{
-            // println!("{:?}",user_nfts_holding_data);
-            Some(
-                UserNftHolding{
-                    collections:user_nfts_holding_data.collections,
-                })
+                                let sell_price_u64=sell_pirce.clone().get(0..sell_pirce.clone().len()-4).unwrap().parse::<i64>().unwrap();
+                                let buy_price_u64=buy_price.clone().get(0..buy_price.clone().len()-4).unwrap().parse::<i64>().unwrap();
+                                let buy_fee=buy_market_fee.clone().get(0..buy_market_fee.clone().len()-4).unwrap().parse::<i64>().unwrap() + buy_royalties_fee.clone().get(0..buy_royalties_fee.clone().len()-4).unwrap().parse::<i64>().unwrap();
+                                
+                                let realized_gains=sell_price_u64-buy_price_u64-buy_fee;
+                                let holding_time=sell_time-buy_time;
+
+                                result_hashmap
+                                    .entry(buy.0.clone())
+                                    .or_insert_with(Vec::new)
+                                    .push(IncomeNft { 
+                                        token_id: buy_.1[0].token_id.clone(), 
+                                        buy_price: buy_price.to_owned(), 
+                                        sell_price: sell_pirce.to_owned(), 
+                                        realized_gains: format!("{}usei",realized_gains), 
+                                        holding_time: holding_time.to_string() })
+                                
+                            },
+                            _=>{},
+                        }
+                    }
+                }
+            }
+        }
+
+
+        result_hashmap.iter().for_each(|(key,value)|{
+            result.push(IncomeNfts { 
+                collection: key.to_owned(), 
+                income_nfts: value.to_owned() })
+        });
+
+        if result.len()>0{
+            Some(result)
         }else {
-            
             None
         }
-        
+       
+
     }else {
         None
     }
@@ -457,7 +714,6 @@ pub async fn get_user_top_nfts(wallet_address:&str,conn:&mut PgConnection) -> Op
         None
     }
 }
-
 
 pub async fn get_user_trade_info_nfts(wallet_address:&str,conn:&mut PgConnection) ->Option<UserTradeInfo> {
 
@@ -796,8 +1052,7 @@ mod db_tests{
     #[tokio::test]
     async fn test_db()  {
         let mut conn=client_db().await.unwrap();
-        // // let conn=Arc::new(Mutex::new(conn));
-        let a=get_user_trade_info_nfts("sei10l9hc655uyzwv5xq5ww3l6h93tccwyuljnrk03", &mut conn).await;
+        let a=get_user_income_holding_nfts("sei18p7ed62cm4q67ghfq9dwwfaehszphsf3whkws3", &mut conn).await;
         println!("{:?}",a)
         // let b=search_contract_createauctions("sei13l8rdgguhhmfpe9mqfp0q6ywnw068gmf46tgadvjvdjwnd89ymyq85nnw8", &mut conn).await;
         // println!("{:?}",b);

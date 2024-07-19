@@ -188,3 +188,29 @@ pub struct _trade{
     pub sale_price:String,
     pub ts:String,
 }
+
+#[derive(Serialize, Deserialize,Clone,Debug)]
+pub struct NftTransaction_{
+    pub collection:String,
+    pub token_id:String,
+    pub marketplace_fee:String,
+    pub sale_price:String,
+    pub royalties_fee:String,
+    pub ts:String,
+}
+
+#[derive(Serialize, Deserialize,Clone,Debug)]
+pub struct IncomeNft{
+    pub token_id : String,
+    pub buy_price:String,
+    pub sell_price:String,
+    pub realized_gains:String,
+    pub holding_time:String,
+
+}
+
+#[derive(Serialize, Deserialize,Clone,Debug)]
+pub struct IncomeNfts{
+    pub collection:String,
+    pub income_nfts:Vec<IncomeNft>
+}

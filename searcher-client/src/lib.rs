@@ -102,7 +102,10 @@ pub async fn transcation_datas_routes(mut hash_rx:Receiver<String>,routes:HashMa
                 
                 // token route
                 if is_token(logs){
-                    if token_data_sender.send(hash_data).is_err(){
+                    let res=token_data_sender.send(hash_data);
+
+                    if res.is_err(){
+                        println!("{:?}",res);
                         println!("send token data erro \n{:?}",&hash);
                     };
                 }else if is_nft(logs) {
@@ -272,7 +275,7 @@ pub async fn operate_db(nft_msg_rx:Receiver<NftMessage>,conn:Arc<Mutex<PgConnect
 
 
                         if update_sender_nft_holding.is_some() && update_recipient_nft_holding.is_some() && update_sender_nft_transactions.is_some() && update_recipient_nft_transactons.is_some(){
-                            // println!("update db sucess || accpet bid ")
+                            println!("update db sucess || accpet bid ")
                         }else {
                             println!("update db err || accpet bid  ");
                             println!("{:?}\n",transaction)
@@ -296,7 +299,7 @@ pub async fn operate_db(nft_msg_rx:Receiver<NftMessage>,conn:Arc<Mutex<PgConnect
 
 
                         if update_sender_nft_holding.is_some() && update_recipient_nft_holding.is_some() && update_sender_nft_transactions.is_some() && update_recipient_nft_transactons.is_some(){
-                            // println!("update db sucess || CretaeAuctionNft")
+                            println!("update db sucess || CretaeAuctionNft")
                         }else {
                             println!("update db eroo || CretaeAuctionNft");
                             println!("{:?}\n",transaction)
@@ -320,7 +323,7 @@ pub async fn operate_db(nft_msg_rx:Receiver<NftMessage>,conn:Arc<Mutex<PgConnect
 
 
                         if update_sender_nft_holding.is_some() && update_recipient_nft_holding.is_some() && update_sender_nft_transactions.is_some() && update_recipient_nft_transactons.is_some(){
-                            // println!("update db sucess || CancelAuctionNft")
+                            println!("update db sucess || CancelAuctionNft")
                         }else {
                             println!("update db eroo || CancelAuctionNft");
                             println!("{:?}\n",transaction)
@@ -344,7 +347,7 @@ pub async fn operate_db(nft_msg_rx:Receiver<NftMessage>,conn:Arc<Mutex<PgConnect
 
 
                         if update_sender_nft_holding.is_some() && update_recipient_nft_holding.is_some() && update_sender_nft_transactions.is_some() && update_recipient_nft_transactons.is_some(){
-                            // println!("update db sucess || OnlyTransferNft")
+                            println!("update db sucess || OnlyTransferNft")
                         }else {
                             println!("update db eroo || OnlyTransferNft");
                             println!("{:?}\n",transaction)
@@ -369,7 +372,7 @@ pub async fn operate_db(nft_msg_rx:Receiver<NftMessage>,conn:Arc<Mutex<PgConnect
 
 
                         if update_sender_nft_holding.is_some() && update_recipient_nft_holding.is_some() && update_sender_nft_transactions.is_some() && update_recipient_nft_transactons.is_some(){
-                            // println!("update db sucess || BatchBids")
+                            println!("update db sucess || BatchBids")
                         }else {
                             println!("update db eroo || BatchBids");
                             println!("{:?}\n",transaction)
@@ -394,7 +397,7 @@ pub async fn operate_db(nft_msg_rx:Receiver<NftMessage>,conn:Arc<Mutex<PgConnect
 
 
                         if update_sender_nft_holding.is_some() && update_recipient_nft_holding.is_some() && update_sender_nft_transactions.is_some() && update_recipient_nft_transactons.is_some(){
-                            // println!("update db sucess || PurchaseCartNft")
+                            println!("update db sucess || PurchaseCartNft")
                         }else {
                             println!("update db eroo || PurchaseCartNft");
                             println!("{:?}\n",transaction)
@@ -418,7 +421,7 @@ pub async fn operate_db(nft_msg_rx:Receiver<NftMessage>,conn:Arc<Mutex<PgConnect
 
 
                         if  update_recipient_nft_holding.is_some() && update_recipient_nft_transactons.is_some(){
-                            // println!("update db sucess || Mint")
+                            println!("update db sucess || Mint")
                         }else {
                             println!("update db eroo || Mint");
                             println!("{:?}\n",transaction)
@@ -441,7 +444,7 @@ pub async fn operate_db(nft_msg_rx:Receiver<NftMessage>,conn:Arc<Mutex<PgConnect
                         let update_recipient_nft_transactons=update_nfts_transactions(&msg.transfer.recipient, &mut conn, vec![transaction.clone()]).await;
 
                         if update_sender_nft_holding.is_some() && update_recipient_nft_holding.is_some() && update_sender_nft_transactions.is_some() && update_recipient_nft_transactons.is_some(){
-                            // println!("update db sucess || PurchaseCartNft")
+                            println!("update db sucess || PurchaseCartNft")
                         }else {
                             println!("update db eroo || PurchaseCartNft");
                             println!("{:?}\n",transaction)
@@ -454,7 +457,7 @@ pub async fn operate_db(nft_msg_rx:Receiver<NftMessage>,conn:Arc<Mutex<PgConnect
                         let mut  conn=conn.lock().await;
                         let update_contranct_create_auctions=update_contract_create_auctions(&msg.collection_address, vec![msg.clone()], &mut conn).await;
                         if update_contranct_create_auctions.is_some(){
-                            // println!("update db sucess || OnlyCreateAuction")
+                            println!("update db sucess || OnlyCreateAuction")
                         }else {
                             println!("update db erro || OnlyCreateAuction");
                             println!("{:?}\n",msg)
