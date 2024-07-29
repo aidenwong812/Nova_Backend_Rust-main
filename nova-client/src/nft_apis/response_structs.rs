@@ -206,6 +206,7 @@ pub struct IncomeNft{
     pub sell_price:String,
     pub realized_gains:String,
     pub holding_time:String,
+    pub paid_fee:String,
 
 }
 

@@ -2,7 +2,7 @@ use core::time;
 use std::{collections::HashMap, sync::Arc};
 use chrono::{DateTime, Duration, NaiveDate, Utc};
 use db::{client_db, search_contract_createauctions, search_user};
-use sei_client::field_data::{data_structions::{Event, TxResponse}, field_data_structions::{Collection, NFTtransaction, _NftTransaction}};
+use sei_client::{apis::_apis::get_nft_info,field_data::{data_structions::{Event, TxResponse}, field_data_structions::{Collection, NFTtransaction, _NftTransaction}}};
 use serde_json::{Map, Value};
 use sqlx::PgConnection;
 use sei_client::apis::_apis::get_transaction_txs_by_event;
@@ -364,26 +364,6 @@ pub async fn get_user_income_holding_nfts(wallet_address:&str,conn:&mut PgConnec
                     }
                  
                 },
-                _NftTransaction::CancelAuction(data)=>{
-                    let marketplace_fee=format!("{}usei",((data.auction_price.clone().get(0..data.auction_price.len()-4).unwrap().parse::<f64>().unwrap()) *0.2 ) as u64 );
-                    if &data.transfer.recipient == wallet_address{
-                        buy_transactions.push(NftTransaction_ { 
-                            collection: data.transfer.collection, 
-                            token_id: data.transfer.token_id, 
-                            marketplace_fee: marketplace_fee, 
-                            sale_price: data.auction_price, 
-                            royalties_fee: "0usei".to_string(),
-                            ts:data.transfer.ts })
-                    }else if &data.transfer.sender ==wallet_address{
-                        sell_transactions.push(NftTransaction_ { 
-                            collection: data.transfer.collection, 
-                            token_id: data.transfer.token_id, 
-                            marketplace_fee: marketplace_fee, 
-                            sale_price: data.auction_price, 
-                            royalties_fee: "0usei".to_string(),
-                            ts:data.transfer.ts })
-                    }
-                },
                 _NftTransaction::CretaeAuction(data)=>{
                     let marketplace_fee=format!("{}usei",((data.auction_price.clone().get(0..data.auction_price.len()-4).unwrap().parse::<f64>().unwrap()) *0.2 ) as u64 );
                     if &data.transfer.recipient == wallet_address{
@@ -496,6 +476,7 @@ pub async fn get_user_income_holding_nfts(wallet_address:&str,conn:&mut PgConnec
                 .push(sell_transaction.clone())
         });
 
+
         let now = Utc::now();
         buys.iter_mut().for_each(|(collection,token_id)|{
             token_id.iter_mut().for_each(|(token_id,transactions)|{
@@ -545,62 +526,88 @@ pub async fn get_user_income_holding_nfts(wallet_address:&str,conn:&mut PgConnec
             })
         });
 
-        for (buy,sell) in buys.iter().zip(sells.iter()){
-            if buy.0 == sell.0 {
-                for (buy_,sell_) in buy.1.iter().zip(sell.1.iter()){
-                    if buy_.0==sell_.0{
-                        let buy_time=DateTime::parse_from_rfc3339(&buy_.1[0].ts).unwrap();
-                        let sell_time=DateTime::parse_from_rfc3339(&sell_.1[0].ts).unwrap();
+        for buy in buys.iter(){
+            for sell in sells.iter(){
+                if buy.0 == sell.0{
+                    for buy_ in buy.1.iter(){
+                        for sell_ in sell.1.iter(){
+                            if buy_.0==sell_.0{
 
-                        match buy_time.cmp(&sell_time) {
-                            std::cmp::Ordering::Less=>{
-                                
-                                let buy_price=&buy_.1[0].sale_price.to_owned();
-                                let sell_pirce=&sell_.1[0].sale_price.to_owned();
-                                
-                                let buy_market_fee=&buy_.1[0].marketplace_fee.to_owned();
-                                let buy_royalties_fee=&buy_.1[0].royalties_fee.to_owned();
+                                let buy_time=DateTime::parse_from_rfc3339(&buy_.1[0].ts).unwrap();
+                                let sell_time=DateTime::parse_from_rfc3339(&sell_.1[0].ts).unwrap();
+                                // println!("{:?}",buy_time);
+                                // println!("{:?}",sell_time);
+                                // println!("{:#?}",&buy_.1);
+                                match buy_time.cmp(&sell_time) {
+                                    std::cmp::Ordering::Less=>{
+                                    let buy_price=&buy_.1[0].sale_price.to_owned();
+                                    let sell_pirce=&sell_.1[0].sale_price.to_owned();
+                                    
+                                    let buy_market_fee=&buy_.1[0].marketplace_fee.to_owned();
+                                    let buy_royalties_fee=&buy_.1[0].royalties_fee.to_owned();
+                                    
+                                    let token_id=&buy_.1[0].token_id.to_owned();
+                                    if let Some(nft_info)=get_nft_info(buy_.0.to_owned(),token_id.clone()).await{
 
+                                       
+                                        let sell_price_u64=sell_pirce.clone().get(0..sell_pirce.clone().len()-4).unwrap().parse::<i64>().unwrap();
+                                        let buy_price_u64=buy_price.clone().get(0..buy_price.clone().len()-4).unwrap().parse::<i64>().unwrap();
+                                        let royalites_fee=sell_price_u64* (nft_info.royalty_percentage as i64);
 
-                                let sell_price_u64=sell_pirce.clone().get(0..sell_pirce.clone().len()-4).unwrap().parse::<i64>().unwrap();
-                                let buy_price_u64=buy_price.clone().get(0..buy_price.clone().len()-4).unwrap().parse::<i64>().unwrap();
-                                let buy_fee=buy_market_fee.clone().get(0..buy_market_fee.clone().len()-4).unwrap().parse::<i64>().unwrap() + buy_royalties_fee.clone().get(0..buy_royalties_fee.clone().len()-4).unwrap().parse::<i64>().unwrap();
-                                
-                                let realized_gains=sell_price_u64-buy_price_u64-buy_fee;
-                                let holding_time=sell_time-buy_time;
-
-                                result_hashmap
-                                    .entry(buy.0.clone())
-                                    .or_insert_with(Vec::new)
-                                    .push(IncomeNft { 
-                                        token_id: buy_.1[0].token_id.clone(), 
-                                        buy_price: buy_price.to_owned(), 
-                                        sell_price: sell_pirce.to_owned(), 
-                                        realized_gains: format!("{}usei",realized_gains), 
-                                        holding_time: holding_time.to_string() })
-                                
-                            },
-                            _=>{},
+                                        let buy_fee=buy_market_fee.clone().get(0..buy_market_fee.clone().len()-4).unwrap().parse::<i64>().unwrap() + royalites_fee;
+                                        
+                                        let realized_gains=sell_price_u64-buy_price_u64-buy_fee;
+                                        let holding_time=sell_time-buy_time;
+    
+                                        result_hashmap
+                                            .entry(buy.0.clone())
+                                            .or_insert_with(Vec::new)
+                                            .push(IncomeNft { 
+                                                token_id: buy_.1[0].token_id.clone(), 
+                                                buy_price: buy_price.to_owned(), 
+                                                sell_price: sell_pirce.to_owned(), 
+                                                realized_gains: format!("{}usei",realized_gains), 
+                                                holding_time: holding_time.num_minutes().to_string(),
+                                                paid_fee:format!("{}usei",buy_fee) })  
+                                    }else {
+                                        let sell_price_u64=sell_pirce.clone().get(0..sell_pirce.clone().len()-4).unwrap().parse::<i64>().unwrap();
+                                        let buy_price_u64=buy_price.clone().get(0..buy_price.clone().len()-4).unwrap().parse::<i64>().unwrap();
+                                        let buy_fee=buy_market_fee.clone().get(0..buy_market_fee.clone().len()-4).unwrap().parse::<i64>().unwrap() + buy_royalties_fee.clone().get(0..buy_royalties_fee.clone().len()-4).unwrap().parse::<i64>().unwrap();
+                                        
+                                        let realized_gains=sell_price_u64-buy_price_u64-buy_fee;
+                                        let holding_time=sell_time-buy_time;
+    
+                                        result_hashmap
+                                            .entry(buy.0.clone())
+                                            .or_insert_with(Vec::new)
+                                            .push(IncomeNft { 
+                                                token_id: buy_.1[0].token_id.clone(), 
+                                                buy_price: buy_price.to_owned(), 
+                                                sell_price: sell_pirce.to_owned(), 
+                                                realized_gains: format!("{}usei",realized_gains), 
+                                                holding_time: holding_time.num_minutes().to_string(),
+                                                paid_fee:format!("{}usei",buy_fee) })   
+                                    }
+                                    },
+                                    _=>{}
+                                }
+                            }
                         }
                     }
                 }
             }
         }
-
-
+     
         result_hashmap.iter().for_each(|(key,value)|{
             result.push(IncomeNfts { 
                 collection: key.to_owned(), 
                 income_nfts: value.to_owned() })
         });
-
         if result.len()>0{
             Some(result)
         }else {
             None
         }
-       
-
     }else {
         None
     }
@@ -1052,8 +1059,8 @@ mod db_tests{
     #[tokio::test]
     async fn test_db()  {
         let mut conn=client_db().await.unwrap();
-        let a=get_user_income_holding_nfts("sei18p7ed62cm4q67ghfq9dwwfaehszphsf3whkws3", &mut conn).await;
-        println!("{:?}",a)
+        let a=get_user_income_holding_nfts("sei16zjp47vwu48uvjdetc3rn477d8td5dlwnsd0n4", &mut conn).await;
+        println!("{:#?}",a)
         // let b=search_contract_createauctions("sei13l8rdgguhhmfpe9mqfp0q6ywnw068gmf46tgadvjvdjwnd89ymyq85nnw8", &mut conn).await;
         // println!("{:?}",b);
 
