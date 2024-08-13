@@ -4,11 +4,6 @@ use sqlx::FromRow;
 
 
 
-
-
-
-
-
 #[derive(Serialize, Deserialize,Clone,Debug,FromRow,PartialEq,Eq)]
 pub struct _Collection{
     pub collection :String,

@@ -1785,6 +1785,7 @@ dependencies = [
 name = "nova-client"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "chrono",
  "db",
  "reqwest",
@@ -2494,6 +2495,7 @@ dependencies = [
 name = "sei-client"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "base64 0.22.1",
  "reqwest",
  "serde",

@@ -13,7 +13,7 @@
         },
         {
             "previewLimit": 50,
-            "server": "89.163.148.219",
+            "server": "173.0.55.178",
             "port": 5555,
             "driver": "PostgreSQL",
             "name": "postgres",

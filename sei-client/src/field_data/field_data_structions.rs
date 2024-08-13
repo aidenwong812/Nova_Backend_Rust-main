@@ -192,3 +192,18 @@ pub struct WalletTokenBalance{
     pub amount:String,
     pub denom:String,
 }
+
+#[derive(Serialize, Deserialize,Clone,Debug)]
+pub struct  IbcInfo{
+    pub path:String,
+    pub base_denom:String,
+}
+
+#[derive(Serialize, Deserialize,Clone,Debug)]
+pub struct TokenSmartContractInfo{
+    pub name:String,
+    pub symbol :String,
+    pub decimals:u8,
+    pub total_supply:String,
+    pub logo_url:String,
+}

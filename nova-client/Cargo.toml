@@ -12,3 +12,5 @@ serde = { version = "1.0.203", features = ["derive"] }
 serde_json={version = "1.0.118"}
 chrono="0.4.38"
 db={path="../db"}
+
+anyhow={version="1.0.86"}

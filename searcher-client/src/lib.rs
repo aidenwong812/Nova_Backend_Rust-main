@@ -36,7 +36,7 @@ pub async fn transcation_datas_routes(mut hash_rx:Receiver<String>,routes:HashMa
                     log.events.iter().any(|event|{
                         if event._type=="wasm".to_string(){
                             event.attributes.iter().any(|att|{
-                                if att.value=="swap".to_string(){
+                                if att.value=="swap".to_string() {//&& att.key=="action".to_string(){
                                     return true;
                                 }else {
                                     return false;
@@ -92,33 +92,26 @@ pub async fn transcation_datas_routes(mut hash_rx:Receiver<String>,routes:HashMa
 
             //限制并发
             let permit = semaphore.acquire().await.unwrap();
-            let hash_vale = get_transaction_txs_by_tx(&hash).await.unwrap();
-            let hash_data =serde_json::from_value::<HashData>(hash_vale).unwrap();  //反序列化数据
-            let transaction_status_code: &u64 =&hash_data.tx_response.code;
 
-            if transaction_status_code==&0{
-
-                let logs:&Vec<Log>=&hash_data.tx_response.logs;
-                
-                // token route
-                if is_token(logs){
-                    let res=token_data_sender.send(hash_data);
-
-                    if res.is_err(){
-                        println!("{:?}",res);
-                        println!("send token data erro \n{:?}",&hash);
-                    };
-                }else if is_nft(logs) {
-                    // nft route
-                    if nft_data_sender.send(hash_data).is_err(){
-                        println!("send nft data erro \n{:?}",&hash);   
+            if let Ok(hash_vale) = get_transaction_txs_by_tx(&hash).await{
+                let hash_data =serde_json::from_value::<HashData>(hash_vale).unwrap();  //反序列化数据
+                if hash_data.tx_response.code==0{
+                    let logs:&Vec<Log>=&hash_data.tx_response.logs;
+                    if is_token(logs){
+                         if let Err(e)= token_data_sender.send(hash_data) {
+                                println!("Tx_Hash is :{:#?}",&hash);
+                                println!("send token data erro \n{:#?}",e);                             
+                         }
+                    }else if is_nft(logs) {
+                        if let Err(e)=nft_data_sender.send(hash_data){
+                                println!("Tx_Hash is :{:#?}",&hash);
+                                println!("send nft data erro \n{:#?}",e);                             
+                        }
                     }
                 }
             }
              //释放限制
              drop(permit);
-            
-           
         });
     }
 }
@@ -204,40 +197,22 @@ pub fn websocket_run(url:&str,query:&str,hash_sender:Sender<String>) {
 
 }
 
-pub fn send_token_swap_data(mut token_rx:Receiver<HashData>,token_swpan_data_sender:Sender<Vec<TokenSwap>>) {
+pub async fn return_token_swap_data(token_rx:Receiver<HashData>,conn:Arc<Mutex<PgConnection>>)  {
     
-    let token_swpan_data_sender=Arc::new(token_swpan_data_sender);
     while let Ok(hash_data) =token_rx.recv()  {
-        let token_swpan_data_sender=Arc::clone(&token_swpan_data_sender);
-        thread::spawn( move || {
-            let token_swap_data=swap_datas(hash_data);
-            token_swpan_data_sender.send(token_swap_data).unwrap();
-        }).join().unwrap();
-        
+        let mut conn=conn.lock().await;
+        let tx_hash=hash_data.tx.to_owned();
+        for token_swap_data in swap_datas(hash_data){
+            if let Some(_) =update_token_transaction(&token_swap_data.account, &mut conn, vec![token_swap_data.clone()]).await  {
+                println!("Update token swap data success")
+            }else {
+                println!("add token swap to db erro");
+                println!("{:#?}",tx_hash);
+            }
+        };
+        drop(conn)
     }
-}
 
-pub async fn return_token_swap_data(mut token_swap_data_re:Receiver<Vec<TokenSwap>>,conn:Arc<Mutex<PgConnection>>)  {
-    
-    for token_swap_datas in token_swap_data_re  {
-        let conn=Arc::clone(&conn);
-        
-        tokio::task::spawn(async move {
-            let mut conn=conn.lock().await;
-            for token_swap_data in token_swap_datas{      
-                if let Some(_) =update_token_transaction(&token_swap_data.account, &mut conn, vec![token_swap_data.clone()]).await  {
-                        // println!("{:?}",token_swap_data);
-                }else {
-                    println!("{:?}",token_swap_data);
-                    println!("add token swap to db erro");
-                }
-            };
-            drop(conn);
-           
-        }).await.unwrap();
-        continue;
-
-    }
 }
 
 pub async fn return_nft_transaction_data(mut nft_rx:Receiver<HashData>,mut nft_msg_tx:Arc<Sender<NftMessage>>) {
@@ -254,10 +229,9 @@ pub async fn return_nft_transaction_data(mut nft_rx:Receiver<HashData>,mut nft_m
 
 
 pub async fn operate_db(nft_msg_rx:Receiver<NftMessage>,conn:Arc<Mutex<PgConnection>>)  {
-    println!("操作数据库");
+    // println!("操作数据库");
 
-    for transaction in nft_msg_rx{
-            
+    for transaction in nft_msg_rx{   
             match transaction {
                 NftMessage::AcceptBidNft(msgs)=>{
                     for msg in msgs{
@@ -273,9 +247,8 @@ pub async fn operate_db(nft_msg_rx:Receiver<NftMessage>,conn:Arc<Mutex<PgConnect
                         let update_sender_nft_transactions=update_nfts_transactions(&msg.transfer.sender, &mut conn, vec![transaction.clone()]).await;
                         let update_recipient_nft_transactons=update_nfts_transactions(&msg.transfer.recipient, &mut conn, vec![transaction.clone()]).await;
 
-
                         if update_sender_nft_holding.is_some() && update_recipient_nft_holding.is_some() && update_sender_nft_transactions.is_some() && update_recipient_nft_transactons.is_some(){
-                            println!("update db sucess || accpet bid ")
+                            // println!("update db sucess || accpet bid ")
                         }else {
                             println!("update db err || accpet bid  ");
                             println!("{:?}\n",transaction)
@@ -299,7 +272,7 @@ pub async fn operate_db(nft_msg_rx:Receiver<NftMessage>,conn:Arc<Mutex<PgConnect
 
 
                         if update_sender_nft_holding.is_some() && update_recipient_nft_holding.is_some() && update_sender_nft_transactions.is_some() && update_recipient_nft_transactons.is_some(){
-                            println!("update db sucess || CretaeAuctionNft")
+                            // println!("update db sucess || CretaeAuctionNft")
                         }else {
                             println!("update db eroo || CretaeAuctionNft");
                             println!("{:?}\n",transaction)
@@ -323,7 +296,7 @@ pub async fn operate_db(nft_msg_rx:Receiver<NftMessage>,conn:Arc<Mutex<PgConnect
 
 
                         if update_sender_nft_holding.is_some() && update_recipient_nft_holding.is_some() && update_sender_nft_transactions.is_some() && update_recipient_nft_transactons.is_some(){
-                            println!("update db sucess || CancelAuctionNft")
+                            // println!("update db sucess || CancelAuctionNft")
                         }else {
                             println!("update db eroo || CancelAuctionNft");
                             println!("{:?}\n",transaction)
@@ -347,7 +320,7 @@ pub async fn operate_db(nft_msg_rx:Receiver<NftMessage>,conn:Arc<Mutex<PgConnect
 
 
                         if update_sender_nft_holding.is_some() && update_recipient_nft_holding.is_some() && update_sender_nft_transactions.is_some() && update_recipient_nft_transactons.is_some(){
-                            println!("update db sucess || OnlyTransferNft")
+                            // println!("update db sucess || OnlyTransferNft")
                         }else {
                             println!("update db eroo || OnlyTransferNft");
                             println!("{:?}\n",transaction)
@@ -372,7 +345,7 @@ pub async fn operate_db(nft_msg_rx:Receiver<NftMessage>,conn:Arc<Mutex<PgConnect
 
 
                         if update_sender_nft_holding.is_some() && update_recipient_nft_holding.is_some() && update_sender_nft_transactions.is_some() && update_recipient_nft_transactons.is_some(){
-                            println!("update db sucess || BatchBids")
+                            // println!("update db sucess || BatchBids")
                         }else {
                             println!("update db eroo || BatchBids");
                             println!("{:?}\n",transaction)
@@ -397,7 +370,7 @@ pub async fn operate_db(nft_msg_rx:Receiver<NftMessage>,conn:Arc<Mutex<PgConnect
 
 
                         if update_sender_nft_holding.is_some() && update_recipient_nft_holding.is_some() && update_sender_nft_transactions.is_some() && update_recipient_nft_transactons.is_some(){
-                            println!("update db sucess || PurchaseCartNft")
+                            // println!("update db sucess || PurchaseCartNft")
                         }else {
                             println!("update db eroo || PurchaseCartNft");
                             println!("{:?}\n",transaction)
@@ -421,7 +394,7 @@ pub async fn operate_db(nft_msg_rx:Receiver<NftMessage>,conn:Arc<Mutex<PgConnect
 
 
                         if  update_recipient_nft_holding.is_some() && update_recipient_nft_transactons.is_some(){
-                            println!("update db sucess || Mint")
+                            // println!("update db sucess || Mint")
                         }else {
                             println!("update db eroo || Mint");
                             println!("{:?}\n",transaction)
@@ -444,7 +417,7 @@ pub async fn operate_db(nft_msg_rx:Receiver<NftMessage>,conn:Arc<Mutex<PgConnect
                         let update_recipient_nft_transactons=update_nfts_transactions(&msg.transfer.recipient, &mut conn, vec![transaction.clone()]).await;
 
                         if update_sender_nft_holding.is_some() && update_recipient_nft_holding.is_some() && update_sender_nft_transactions.is_some() && update_recipient_nft_transactons.is_some(){
-                            println!("update db sucess || PurchaseCartNft")
+                            // println!("update db sucess || PurchaseCartNft")
                         }else {
                             println!("update db eroo || PurchaseCartNft");
                             println!("{:?}\n",transaction)
@@ -457,7 +430,7 @@ pub async fn operate_db(nft_msg_rx:Receiver<NftMessage>,conn:Arc<Mutex<PgConnect
                         let mut  conn=conn.lock().await;
                         let update_contranct_create_auctions=update_contract_create_auctions(&msg.collection_address, vec![msg.clone()], &mut conn).await;
                         if update_contranct_create_auctions.is_some(){
-                            println!("update db sucess || OnlyCreateAuction")
+                            // println!("update db sucess || OnlyCreateAuction")
                         }else {
                             println!("update db erro || OnlyCreateAuction");
                             println!("{:?}\n",msg)
@@ -472,8 +445,10 @@ pub async fn operate_db(nft_msg_rx:Receiver<NftMessage>,conn:Arc<Mutex<PgConnect
              
     }
     
-    
-    
+    thread::sleep(Duration::from_secs(3))
+    // 54 18
+    //58  21
+    //4 25
 }
 
 

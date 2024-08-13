@@ -1,5 +1,6 @@
 extern crate base64;
 
+use anyhow::{anyhow, Result};
 use base64::encode;
 // use futures::lock::Mutex;
 use tokio::sync::{Mutex, Semaphore};
@@ -8,7 +9,7 @@ use std::{error::Error, sync::Arc};
 use reqwest::{Client, Proxy};
 use std::collections::HashMap;
 use serde_json::{json, Map, Value};
-use crate::field_data::field_data_structions::{self, Collection, NftAttribute, NftToken, WalletTokenBalance};
+use crate::field_data::field_data_structions::{self, Collection, IbcInfo, NftAttribute, NftToken, TokenSmartContractInfo, WalletTokenBalance};
 use crate::field_data::{data_structions::{AllNftInfo, Attributes}, field_data_structions::CollectionInfo};
 
 
@@ -48,7 +49,6 @@ pub async fn get_transaction_txs_by_tx<'nova_client>(txhash:&'nova_client str) -
                                      .await?
                                      .json()
                                      .await?;
-                                    // code
 
         let data: &Map<String, Value>=rp_data.as_object().unwrap();
 
@@ -104,7 +104,6 @@ pub async fn get_contract_info(contract_address:String) ->Option<CollectionInfo>
         let rp_data=Arc::new(Mutex::new(rp_data));
         let client=Arc::new(Client::new());
        
-
         let mut thread_handles:Vec<JoinHandle<()>>=vec![];
 
         let query_datas=vec![
@@ -133,7 +132,6 @@ pub async fn get_contract_info(contract_address:String) ->Option<CollectionInfo>
 
             thread_handles.push(handel);
         }
-
 
         for thread_handle in thread_handles{
             thread_handle.await.unwrap();
@@ -186,7 +184,6 @@ pub async fn get_nft_info(contract_address:String,token_id:String) ->Option<NftT
         let query_data=encode(json!({"all_nft_info":{"token_id":token_id}}).to_string());
 
         let url=format!("{}/cosmwasm/wasm/v1/contract/{}/smart/{}",BASEURL,contract_address,query_data);
-        
         match client.get(url).send().await {
             Ok(data)=>{
                 
@@ -307,32 +304,90 @@ pub async fn get_all_nft_info(contract_address:String,max_concurrent_tasks: usiz
 }
 
 
-pub async fn get_wallet_balances(wallet_address:&str) ->Result<Vec<WalletTokenBalance>,Box<dyn Error>> {
+pub async fn get_wallet_balances(wallet_address:&str) ->Result<Vec<WalletTokenBalance>> {
 
-    let url=format!("{}/cosmos/bank/v1beta1/balances/{}",BASEURL,wallet_address);
+    // let url=format!("{}/cosmos/bank/v1beta1/balances/{}",BASEURL,wallet_address);
+    let url=format!("https://celatone-api-prod.alleslabs.dev/v1/sei/pacific-1/accounts/{}/balances",wallet_address);
+    // test proxy
+    // let proxy=Proxy::all("http://127.0.0.1:8080/").expect("msg");
+    // let client=Client::builder().proxy(proxy).build().expect("msg");
     let client=&Client::new();
     let rp_data:Value=client.get(url)
                                 .send()
-                                .await.expect("msg")
+                                .await?
                                 .json()
-                                .await.expect("msg");
-
-    let data: &Map<String, Value>=rp_data.as_object().unwrap();
-    if data.get("code").is_none(){
-        if let Some(balacnes)=data.get("balances"){
-            if let Ok(wallet_balances)=serde_json::from_value::<Vec<WalletTokenBalance>>(balacnes.to_owned()){
-                Ok(wallet_balances)
-            }else {
-                // Err("don't have data || wallet balance none".into())
-                Err("1".into())
-            }
+                                .await?;
+    Ok(serde_json::from_value::<Vec<WalletTokenBalance>>(rp_data)?)
+    // let data: &Map<String, Value>=rp_data.as_object().unwrap();
+    // if data.get("code").is_none(){
+    //     if let Some(balacnes)=data.get("balances"){
+    //         if let Ok(wallet_balances)=serde_json::from_value::<Vec<WalletTokenBalance>>(balacnes.to_owned()){
+    //             Ok(wallet_balances)
+    //         }else {
+    //             // Err("don't have data || wallet balance none".into())
+    //             Err("1".into())
+    //         }
             
-        }else {
-            // Err("don't have data || wallet balance none".into())
-            Err("2".into())
-        }
+    //     }else {
+    //         // Err("don't have data || wallet balance none".into())
+    //         Err("2".into())
+    //     }
+    // }else {
+    //     // Err("don't have data || erro get wallet balance ".into())
+    //     Err(("3").into())
+    // }
+}
+
+pub async fn get_ibc_info(ibc_address:&str) -> Result<IbcInfo> {
+    
+    let ibc=ibc_address.get(4..).unwrap();
+    let client=&Client::new();
+    
+    let data_rp:Value=client.get(format!("{}/ibc/apps/transfer/v1/denom_traces/{}",BASEURL,ibc))
+                        .send().await?
+                        .json().await?;
+
+    if let Some(ibc_info)=data_rp.get("denom_trace"){
+        Ok(serde_json::from_value::<IbcInfo>(ibc_info.to_owned()).unwrap())
+        
     }else {
-        // Err("don't have data || erro get wallet balance ".into())
-        Err(("3").into())
+        Err(anyhow!("1"))
     }
+}
+
+pub async fn get_token_smartcontract_info(contract_address:&str)->Result<TokenSmartContractInfo>{
+
+    let client=Arc::new(Client::new());
+    let query_datas=vec![
+        encode(json!({"token_info":{}}).to_string()),
+        encode(json!({"marketing_info":{}}).to_string()),
+    ];
+    
+    
+    let url1=format!("{}/cosmwasm/wasm/v1/contract/{}/smart/{}",BASEURL,contract_address,query_datas[0]);
+
+    let data_rp1:Value=client.get(url1)
+                            .send().await?
+                            .json().await?;
+
+    let url2=format!("{}/cosmwasm/wasm/v1/contract/{}/smart/{}",BASEURL,contract_address,query_datas[1]);
+    let data_rp2:Value=client.get(url2)
+                            .send().await?
+                            .json().await?;
+    
+    if let (Some(token_info),Some(token_market_info)) = (data_rp1.get("data"),data_rp2.get("data")) {
+        
+        Ok(TokenSmartContractInfo { 
+            name: token_info.get("name").unwrap().as_str().unwrap().to_owned(), 
+            symbol: token_info.get("symbol").unwrap().as_str().unwrap().to_owned(), 
+            decimals: token_info.get("decimals").unwrap().as_u64().unwrap() as u8, 
+            total_supply: token_info.get("total_supply").unwrap().as_str().unwrap().to_owned(), 
+            logo_url: token_market_info.get("logo").unwrap().get("url").unwrap().as_str().unwrap().to_owned() })
+    }else {
+        Err(anyhow!("1"))
+    }
+
+
+
+
 }

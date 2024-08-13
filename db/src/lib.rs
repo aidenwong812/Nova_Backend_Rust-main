@@ -320,10 +320,7 @@ pub async fn update_nfts_holding(wallet_address:&str,collection_account:&str,nft
 
 
 pub async fn update_nfts_transactions(wallet_address:&str,conn:&mut PgConnection,nfts_transaction:Vec<NFTtransaction>) -> Option<PgQueryResult> {
-        
-        
-        
-        
+            
         if let Some(UserData) =search_user(wallet_address, conn).await  {
             
             let mut nfts_transactions=UserData.nfts_transactions;

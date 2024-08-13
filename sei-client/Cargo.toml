@@ -12,5 +12,5 @@ serde = { version = "1.0.203", features = ["derive"] }
 serde_json={version = "1.0.0"}
 
 base64 = "0.22.1"
-
+anyhow="1.0.86"
 # db={path="../db"}

@@ -6,7 +6,7 @@ use std::sync::mpsc::channel;
 use tokio::{sync::{self,Semaphore, mpsc::channel as tokio_channel}, time::{sleep, Duration}};
 use std::collections::HashMap;
 use std::sync::Arc;
-use  searcher_client::{   operate_db, return_nft_transaction_data, return_token_swap_data, send_token_swap_data, transcation_datas_routes, websocket_run};
+use  searcher_client::{   operate_db, return_nft_transaction_data, return_token_swap_data, transcation_datas_routes, websocket_run};
 
 use db::client_db;
 
@@ -31,8 +31,7 @@ async fn main()  {
     let (nft_tx,nft_rx)=channel();
     let (token_tx,token_rx)=channel();
 
-    let (token_swap_tx,token_swap_rx)=channel();
-    
+
 
     let (nft_msg_tx,nft_msg_rx)=channel();
 
@@ -45,40 +44,29 @@ async fn main()  {
     routes.insert("nft".to_string(), nft_tx);
     routes.insert("token".to_string(), token_tx);
 
-    // println!("{:?}",routes);
-
+    // start websockets
     tokio::spawn(async move {
-     
              websocket_run(ws_url, query, hash_tx);
-        
     });
     
-
+    //start routes   token || nft
     let routes_semaphore = Arc::new(Semaphore::new(2000));
     tokio::spawn(async move{
         transcation_datas_routes(hash_rx, routes,routes_semaphore).await;
     });
 
 
-
-    let a=thread::spawn(move ||{
-        send_token_swap_data(token_rx, token_swap_tx)
-    });
-
-
-
-    
     let nft_msg_tx=Arc::new(nft_msg_tx);
     tokio::spawn(async move {
         return_nft_transaction_data(nft_rx,nft_msg_tx).await;
     });
 
-    let conn2=Arc::clone(&conn);
-    
+
+    let conn2=Arc::clone(&conn);  
     tokio::spawn(async move {operate_db(nft_msg_rx,conn2).await}).await;
 
     let conn1=Arc::clone(&conn);
     tokio::spawn(async move {
-        return_token_swap_data(token_swap_rx, conn1).await;
+        return_token_swap_data(token_rx, conn1).await;
     });
 }

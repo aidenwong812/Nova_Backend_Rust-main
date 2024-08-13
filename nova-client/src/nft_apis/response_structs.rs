@@ -212,6 +212,9 @@ pub struct IncomeNft{
 
 #[derive(Serialize, Deserialize,Clone,Debug)]
 pub struct IncomeNfts{
+    pub name:String,
+    pub symbol:String,
     pub collection:String,
+    pub floor_price:Option<String>,
     pub income_nfts:Vec<IncomeNft>
 }

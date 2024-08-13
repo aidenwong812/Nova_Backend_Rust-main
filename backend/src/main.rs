@@ -4,7 +4,7 @@ mod routes;
 use actix_web::{web::{self, Data}, App, HttpServer};
 use actix_cors::Cors;
 
-use  routes::{get_holding_nfts, get_holding_nfts_top, get_income_nfts,get_nfts_trades_info};
+use  routes::{get_holding_nfts, get_holding_nfts_top, get_income_nfts,get_nfts_trades_info, get_user_token_hold, get_user_tokens_top, get_user_trades_info};
 
 use dotenv::dotenv;
 use db::client_db;
@@ -34,7 +34,7 @@ async fn main() -> std::io::Result<()> {
                     .allowed_origin("http://localhost:3000")
                     .allowed_origin("https://localhost:3000")
                     .allowed_origin("https://novafrontend-dev.vercel.app")
-                    .allowed_origin("https://dev.nova-solutions.io/")
+                    .allowed_origin("https://dev.nova-solutions.io")
                     .allow_any_header()
                     .allow_any_method()
                     .max_age(3600) 
@@ -45,7 +45,13 @@ async fn main() -> std::io::Result<()> {
                         .service(get_income_nfts)
                         .service(get_holding_nfts_top)
                         .service(get_nfts_trades_info)
-                            )
+                )
+                .service(
+                    web::scope("/token")
+                        .service(get_user_token_hold)   
+                        .service(get_user_tokens_top)
+                        .service(get_user_trades_info)
+                )
                             
                     })
         .bind_openssl(("0.0.0.0", 9999),ssl_builder)?
