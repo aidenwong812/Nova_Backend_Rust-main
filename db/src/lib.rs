@@ -2,168 +2,35 @@ pub mod tables;
 use chrono::{DateTime, Utc, NaiveDate};
 use serde_json::Value;
 use sqlx::{
-    postgres::{PgPoolOptions, PgQueryResult}, types::Json, Connection, PgConnection, Pool
+    postgres::{PgPoolOptions, PgQueryResult}, types::Json, Connection, PgConnection, Pool, Postgres
     };
 use std::{env, error::Error};
 use dotenv::dotenv;
 
 use tables::*;
 
-use sei_client::{ apis::_apis::{get_contract_info, get_nft_info}, field_data::field_data_structions::{Collection, NFTtransaction, NftToken, TokenSwap, User,FixedSellNft,OnlyCreateAuction,ContractCreateAuctions}};
+use sei_client::{ apis::_apis::{get_contract_info, get_nft_info}, field_data::field_data_structions::{Collection, _NftTransaction,NFTtransaction, NftToken, TokenSwap, User,FixedSellNft,OnlyCreateAuction,ContractCreateAuctions}};
 
 
 
 
 
-pub async fn client_db() -> Result<PgConnection,Box<dyn Error>> {
+pub async fn client_db() -> Result<Pool<Postgres>,Box<dyn Error>> {
     
     dotenv().ok();
     let database_url = env::var("DATABASE_URL").unwrap();
     // 连接到数据库
     let connect = PgConnection::connect(&database_url).await?;
-    
-    Ok(connect)
+    let connect_pool=PgPoolOptions::new()
+                    .max_connections(20000000)
+                    .idle_timeout(std::time::Duration::from_secs(30))
+                    .connect(&database_url).await?;
+    Ok(connect_pool)
 }
 
-
-#[derive(Debug)]
-pub enum NftCollectionDbOperate {
-    SearchQuery(Option<Collection>),
-    InsertOrUpdate(Result<PgQueryResult,Box<dyn Error>>)
-}
-
-pub enum NftCollectionDb {
-    Search(String),
-    Insert(Collection),
-    Count{collection_account:String,count:String},
-    Nfts{collection_account:String,nfts:Vec<NftToken>},
-
-}impl NftCollectionDb {
-
-    pub async fn operate(op:NftCollectionDb,conn:&mut PgConnection) -> NftCollectionDbOperate {
-        match op {
-            NftCollectionDb::Search(collection_account)=>{
-                let data=NftCollectionDb::search_collection(&collection_account, conn).await;
-                return NftCollectionDbOperate::SearchQuery(data);
-
-            },
-            NftCollectionDb::Insert(collection)=>{
-                let data=NftCollectionDb::insert_collection(collection, conn).await;
-                return NftCollectionDbOperate::InsertOrUpdate(data);
-            },
-            NftCollectionDb::Count { collection_account, count }=>{
-                let data=NftCollectionDb::update_count(&collection_account, conn, count).await;
-                return NftCollectionDbOperate::InsertOrUpdate(data);
-            },
-            NftCollectionDb::Nfts { collection_account, nfts}=>{
-                let data=NftCollectionDb::update_nfts(&collection_account, conn,  nfts).await;
-                return  NftCollectionDbOperate::InsertOrUpdate(data);
-            },
-        }
-    }
-    
-    async fn search_collection(collection_account:&str,conn:&mut PgConnection) -> Option<Collection> {
-        
-        let res=sqlx::query_as::<_,_Collection>(
-            r#"SELECT collection , name , symbol , creator , count , nfts FROM "NFTSCollection" WHERE collection =$1"#
-        )
-        .bind(collection_account)
-        .fetch_one(conn).await;
-
-        if let Ok(data) =res  {
-
-            let nfts=serde_json::from_value::<Vec<NftToken>>(data.nfts).unwrap();
-            
-            Some(Collection{
-                collection:data.collection,
-                name:data.name,
-                symbol:data.symbol,
-                creator:data.creator,
-                count:data.count,
-                nfts:nfts
-            })
-        }else {
-            None
-        }
-    }
-
-    async fn insert_collection(collection:Collection,conn:&mut PgConnection) -> Result<PgQueryResult,Box<dyn Error>> {
-        
-        let insert=sqlx::query::<sqlx::Postgres>(
-             r#"INSERT INTO "NFTSCollection" (collection, name, symbol, creator,count,nfts) VALUES ($1, $2, $3, $4,$5,$6)"#
-        )
-        .bind(collection.collection)
-        .bind(collection.name)
-        .bind(collection.symbol)
-        .bind(collection.creator)
-        .bind(collection.count)
-        .bind(serde_json::to_value(&collection.nfts).unwrap())
-        .execute(conn).await;
-
-        if let Ok(insert_option) =insert  {
-            Ok(insert_option)
-        }else {
-            Err("insert data erro".into())
-        }
-       
-    }
-
-    async fn update_count(collection_account:&str,conn:&mut PgConnection,count:String) -> Result<PgQueryResult,Box<dyn Error>> {
-        
-        let res=sqlx::query(
-            r#"UPDATE "NFTSCollection SET count =$2 WHERE collection =$1"#
-        )
-        .bind(collection_account)
-        .bind(count)
-        .execute(conn)
-        .await;
-
-        
-        if let Ok(result) =res  {
-            Ok(result)
-        }else {
-            Err("update count to NFTSCollection erro".into())
-        }
-
-    }
-
-    async fn update_nfts(collection_account:&str,conn:&mut PgConnection,_nfts: Vec<NftToken>) -> Result<PgQueryResult,Box<dyn Error>> {
-        
-        if let Some(data)=NftCollectionDb::search_collection(collection_account, conn).await{
-            
-            // let mut _nft=_nfts;
-            let mut nfts=data.nfts;
-            nfts.extend(_nfts.iter().cloned());
-
-            
-            let res=sqlx::query(
-                r#"UPDATE "NFTSCollection SET nfts =$2 WHERE collection =$1"#
-            )
-            .bind(collection_account)
-            .bind(serde_json::to_value(nfts).unwrap())
-            .execute(conn)
-            .await;
-
-            if let Ok(result) =res  {
-                Ok(result)
-            }else {
-                Err("update nfts to NFTSCollection erro".into())
-            }
-
-        }else {
-            Err("don't have this cellection account".into())
-        }
-
-        
-    }
-
-
-
-
-}
 
 pub async fn search_user(wallet_address:&str,conn:&mut PgConnection) ->Option<User>{
-        
+        println!("{}",wallet_address);
         let res=sqlx::query_as::<_,_User>(
             r#"SELECT wallet_address, nfts_holding, nfts_transactions, token_transactions FROM "User" WHERE wallet_address = $1"#
         )
@@ -319,42 +186,66 @@ pub async fn update_nfts_holding(wallet_address:&str,collection_account:&str,nft
 }
 
 
-pub async fn update_nfts_transactions(wallet_address:&str,conn:&mut PgConnection,nfts_transaction:Vec<NFTtransaction>) -> Option<PgQueryResult> {
+pub async fn update_nfts_transactions(wallet_address:&str,conn:&mut PgConnection,nfts_transactions:Vec<NFTtransaction>) -> Option<PgQueryResult> {
             
         if let Some(UserData) =search_user(wallet_address, conn).await  {
             
-            let mut nfts_transactions=UserData.nfts_transactions;
-            nfts_transactions.extend(nfts_transaction.iter().cloned());
+            let mut db_nfts_transactions=UserData.nfts_transactions;
+            for t in &nfts_transactions{
+                if !db_nfts_transactions.iter().any(|x|{
+                    match (&t.transaction,&x.transaction) {
+                        (_NftTransaction::Mint(tt),_NftTransaction::Mint(xx))=>{
+                            tt.tx==xx.tx
+                        },
+                        (_NftTransaction::AcceptBid(tt),_NftTransaction::AcceptBid(xx))=>{
+                            tt.transfer.tx==xx.transfer.tx
+                        },
+                        (_NftTransaction::BatchBids(tt),_NftTransaction::BatchBids(xx))=>{
+                            tt.transfer.tx==xx.transfer.tx                        },
+                        (_NftTransaction::CancelAuction(tt),_NftTransaction::CancelAuction(xx))=>{
+                            tt.transfer.tx==xx.transfer.tx                        },
+                        (_NftTransaction::CretaeAuction(tt),_NftTransaction::CretaeAuction(xx))=>{
+                            tt.transfer.tx==xx.transfer.tx                        },
+                        (_NftTransaction::OnlyTransfer(tt),_NftTransaction::OnlyTransfer(xx))=>{
+                            tt.tx==xx.tx
+                        },
+                        (_NftTransaction::FixedSell(tt),_NftTransaction::FixedSell(xx))=>{
+                            tt.transfer.tx==xx.transfer.tx                        },
+                        (_NftTransaction::PurchaseCart(tt),_NftTransaction::PurchaseCart(xx))=>{
+                            tt.transfer.tx==xx.transfer.tx                        },
+                        (_,_)=>false
+                    }
+                }){
+                    db_nfts_transactions.push(t.to_owned())
+                }
+            }
             
             let update=sqlx::query(
                  r#"UPDATE "User" SET nfts_transactions =$2 WHERE wallet_address = $1 "#
             )
-            .bind(wallet_address)
-            .bind(serde_json::to_value(nfts_transactions).unwrap())
-            .execute(conn).await;
+                .bind(wallet_address)
+                .bind(serde_json::to_value(db_nfts_transactions).unwrap())
+                .execute(conn).await;
             
             if let Ok(res) = update {
                 Some(res)
             }else {
-                // Err("update nfts transaction err ".into())
                 None
             }
         }else {
-
-            
+   
             let mut nfts_holding:Vec<Collection>=vec![];
-            let mut nfts_transactions:Vec<NFTtransaction>=vec![];
+            let mut db_nfts_transactions:Vec<NFTtransaction>=vec![];
             let mut token_transactions:Vec<TokenSwap>=vec![];
 
-            nfts_transactions.extend(nfts_transaction.iter().cloned());
+            db_nfts_transactions.extend(nfts_transactions.iter().cloned());
 
             let user=User{
                 wallet_address:wallet_address.to_string(),
                 nfts_holding:nfts_holding,
-                nfts_transactions:nfts_transactions,
+                nfts_transactions:db_nfts_transactions,
                 token_transactions:token_transactions,
             };
-
 
             if let Some(res) =insert_user(user, conn).await {
                 Some(res)
@@ -364,23 +255,34 @@ pub async fn update_nfts_transactions(wallet_address:&str,conn:&mut PgConnection
             }
 
         }
-     
 }
 
     
-pub async fn update_token_transaction(wallet_address:&str,conn:&mut PgConnection,token_transaction:Vec<TokenSwap>) -> Option<PgQueryResult> {
+pub async fn update_token_transaction(wallet_address:&str,conn:&mut PgConnection,token_transactions:Vec<TokenSwap>) -> Option<PgQueryResult> {
         
         if let Some(UserData) =search_user(wallet_address, conn).await  {
             
-            let mut token_transactions=UserData.token_transactions;
-            token_transactions.extend(token_transaction.iter().cloned());
-            
+            let mut db_token_transactions=UserData.token_transactions;
+            for t in & token_transactions{
+                if !db_token_transactions.iter().any(|x| 
+                    t.account==x.account && 
+                    t.trade_type == x.trade_type &&
+                    t.tx == x.tx &&
+                    t.ts == x.ts &&
+                    t.target_amount == x.target_amount &&
+                    t.source_amount == x.source_amount &&
+                    t.target_token == x.target_token &&
+                    t.source_token == x.source_token 
+                ){
+                    db_token_transactions.push(t.to_owned())
+                }
+            }            
             let update=sqlx::query(
                  r#"UPDATE "User" SET token_transactions =$2 WHERE wallet_address = $1 "#
             )
-            .bind(wallet_address)
-            .bind(serde_json::to_value(token_transactions).unwrap())
-            .execute(conn).await;
+                .bind(wallet_address)
+                .bind(serde_json::to_value(db_token_transactions).unwrap())
+                .execute(conn).await;
             
             if let Ok(res) = update {
                 Some(res)
@@ -389,26 +291,23 @@ pub async fn update_token_transaction(wallet_address:&str,conn:&mut PgConnection
                 None
             }
         }else {
-
             
             let mut nfts_holding:Vec<Collection>=vec![];
             let mut nfts_transactions:Vec<NFTtransaction>=vec![];
-            let mut token_transactions:Vec<TokenSwap>=vec![];
+            let mut db_token_transactions:Vec<TokenSwap>=vec![];
 
-            token_transactions.extend(token_transaction.iter().cloned());
+            db_token_transactions.extend(token_transactions.iter().cloned());
 
             let user=User{
                 wallet_address:wallet_address.to_string(),
                 nfts_holding:nfts_holding,
                 nfts_transactions:nfts_transactions,
-                token_transactions:token_transactions,
+                token_transactions:db_token_transactions,
             };
-
 
             if let Some(res) = insert_user(user, conn).await {
                 Some(res)
             }else {
-                // Err("update nfts transaction err  || inster user err".into())
                 None
             }
 
@@ -507,7 +406,7 @@ mod tests{
     #[tokio::test]
     async fn test1()  {
        
-        let mut conn=client_db().await.unwrap();
+        let mut conn=client_db().await.unwrap().acquire().await.unwrap();
         let a=search_user("sei1krvjk3r790dcsqkr96ymd44v04w9zz5dlr66z7", &mut conn).await;
       
         println!("{:?}",a)

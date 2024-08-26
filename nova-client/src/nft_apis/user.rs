@@ -13,7 +13,6 @@ use std::mem::MaybeUninit;
 
 pub async fn get_user_nfts_holidng(wallet_address:&str,conn:&mut PgConnection ) -> Option<UserNftHolding>{
     
-    
     let add_ck_hashmap=|holding_nfts:&Vec<Collection>,ck_hashmap:&mut HashMap<String,Vec<String>>| {
         
         holding_nfts.iter().for_each(|collection|{
@@ -27,11 +26,8 @@ pub async fn get_user_nfts_holidng(wallet_address:&str,conn:&mut PgConnection ) 
             ck_hashmap.insert(collection.collection.clone(), nft_keys);
         })
     };
-
  
     if let Some(user_info)=search_user(wallet_address,  conn).await{
-        
-
         if user_info.nfts_holding.len()>0{
             
             let mut hold_collection_keys:HashMap<String, Vec<String>>=HashMap::new();
@@ -41,264 +37,254 @@ pub async fn get_user_nfts_holidng(wallet_address:&str,conn:&mut PgConnection ) 
             let collection_nfts_floor_prices=get_collection_nfts_floorprice(&hold_collection_keys).await;
             
             let mut user_collection_holding:Vec<UserCollectionHold>=vec![];
-
             for collection_holding in user_info.nfts_holding{
-                
+                println!("{:#?}",collection_holding);
+
                 let mut user_nft_holding:Vec<UserNft>=vec![];
                 
                 let floor_price_datas=collection_nfts_floor_prices.get(&collection_holding.collection).unwrap();
-                
                 let collection_floor_price=floor_price_datas.get(&collection_holding.collection).unwrap();
+                println!("{:#?}",collection_floor_price);
+
                 // 创建 未初始化指针
-                let mut floor_price:MaybeUninit<Option<String>>=MaybeUninit::uninit();
-                let mut buy_price:MaybeUninit<Option<String>>=MaybeUninit::uninit();
-                let mut royalties_fee:MaybeUninit<Option<String>>=MaybeUninit::uninit();
-                let mut market_fee:MaybeUninit<Option<String>>=MaybeUninit::uninit();
-                let mut unrealized_gains:MaybeUninit<Option<String>>=MaybeUninit::uninit();
-                let mut ts:MaybeUninit<String>=MaybeUninit::uninit();
-                let mut tx_hash:MaybeUninit<String>=MaybeUninit::uninit();
+                // let mut floor_price_ptr:MaybeUninit<Option<String>>=MaybeUninit::new(None);
+                // let mut buy_price_ptr:MaybeUninit<Option<String>>=MaybeUninit::new(None);
+                // let mut royalties_fee_ptr:MaybeUninit<Option<String>>=MaybeUninit::new(None);
+                // let mut market_fee_ptr:MaybeUninit<Option<String>>=MaybeUninit::new(None);
+                // let mut unrealized_gains_ptr:MaybeUninit<Option<String>>=MaybeUninit::new(None);
+                // let mut ts_ptr:MaybeUninit<Option<String>>=MaybeUninit::new(None);
+                // let mut tx_hash_ptr:MaybeUninit<Option<String>>=MaybeUninit::new(None);
 
-                let floor_price_ptr:*mut Option<String>=floor_price.as_mut_ptr();
-                let buy_price_ptr:*mut Option<String>=buy_price.as_mut_ptr();
-                let royalties_fee_ptr:*mut Option<String>=royalties_fee.as_mut_ptr();
-                let market_fee_ptr:*mut Option<String>=market_fee.as_mut_ptr();
-                let unrealized_gains_ptr:*mut Option<String>=unrealized_gains.as_mut_ptr();
-                let ts_ptr:*mut String=ts.as_mut_ptr();
-                let tx_hash_ptr:*mut String=tx_hash.as_mut_ptr();
+                // println!("{:?}",collection_holding);
+
                
-                collection_holding.nfts.iter().for_each(|(nft)|{
+        //         collection_holding.nfts.iter().for_each(|nft|{
 
-                    // 获取 nft floor price
-                    let nft_floor_price=floor_price_datas.get(&nft.token_id);
-                    
-                    unsafe {
-                        if let Some(price)=nft_floor_price{
-                            if price.is_some(){
-                                floor_price_ptr.write(Some(price.to_owned().unwrap()));
-                            }else {
-                                if let Some(collection_floor_price) = floor_price_datas.get(&collection_holding.collection) {
-                                    if collection_floor_price.is_some(){
-                                        floor_price_ptr.write(Some(collection_floor_price.to_owned().unwrap()));
-                                    }else {
-                                        floor_price_ptr.write(None);
-                                    }
-                                }else {
-                                    floor_price_ptr.write(None);
-                                }
-                            }
-                        
-                        }else {
+        //             // 获取 nft floor price
+
+        //             let nft_floor_price=floor_price_datas.get(&nft.token_id);
+
+        //             unsafe {
+        //                 if let Some(price)=nft_floor_price{
+        //                     if price.is_some(){
+        //                         floor_price_ptr.write(Some(price.to_owned().unwrap()));
+        //                     }else {
+        //                         if let Some(collection_floor_price) = floor_price_datas.get(&collection_holding.collection) {
+        //                             if collection_floor_price.is_some(){
+        //                                 floor_price_ptr.write(Some(collection_floor_price.to_owned().unwrap()));
+        //                             }else {
+        //                                 floor_price_ptr.write(None);
+        //                             }
+        //                         }else {
+        //                             floor_price_ptr.write(None);
+        //                         }
+        //                     }
+        //                 }else {
                        
-                            if let Some(collection_floor_price) = floor_price_datas.get(&collection_holding.collection) {
-                                if collection_floor_price.is_some(){
-                                    floor_price_ptr.write(Some(collection_floor_price.to_owned().unwrap()));
-                                }else {
-                                    floor_price_ptr.write(None);
-                                }
-                            }else {
-                                floor_price_ptr.write(None);
-                            }
+        //                     if let Some(collection_floor_price) = floor_price_datas.get(&collection_holding.collection) {
+        //                         if collection_floor_price.is_some(){
+        //                             floor_price_ptr.write(Some(collection_floor_price.to_owned().unwrap()));
+        //                         }else {
+        //                             floor_price_ptr.write(None);
+        //                         }
+        //                     }else {
+        //                         floor_price_ptr.write(None);
+        //                     }
+        //                 }
+        //             }
                     
-                        }
-                    }
-                    
-                    //获取 buy_price sesf_fre  unrealized_gains
-                    unsafe{
-                        user_info.nfts_transactions.iter().for_each(|transaction|{
-                            
-                            match transaction.to_owned().transaction {
-                                _NftTransaction::AcceptBid(data)=>{
+               
+               
+        //             //获取 buy_price sesf_fre  unrealized_gains
+                
+        //             unsafe{
+        //                 user_info.nfts_transactions.iter().for_each(|transaction|{
+        //                     match transaction.to_owned().transaction {
+        //                         _NftTransaction::AcceptBid(data)=>{
                                     
-                                    if &data.transfer.collection ==&collection_holding.collection && &data.transfer.token_id==&nft.token_id && &data.transfer.recipient==wallet_address{
-                                        market_fee_ptr.write(Some(data.marketplace_fee));
-                                        royalties_fee.write(Some(data.royalties));
-                                        buy_price_ptr.write(Some(data.sale_price));
-                                        ts_ptr.write(data.transfer.ts);
-                                        tx_hash_ptr.write(data.transfer.tx);
-                                 
-                                    }
-                                },
-                                _NftTransaction::BatchBids(data)=>{
-                                    
-                                    if &data.transfer.collection ==&collection_holding.collection && &data.transfer.token_id==&nft.token_id && &data.transfer.recipient==wallet_address{
-                                        let sale_price=data.sale_price.clone();
-                                        let market_fee=(sale_price.get(0..sale_price.len()-4).unwrap().parse::<f64>().unwrap() * 0.2) as u64;
-                                        let market_fee=format!("{}usei",market_fee.to_string());
+        //                             if &data.transfer.collection ==&collection_holding.collection && &data.transfer.token_id==&nft.token_id && &data.transfer.recipient==wallet_address{
+        //                                 market_fee_ptr.write(Some(data.marketplace_fee));
+        //                                 royalties_fee_ptr.write(Some(data.royalties));
+        //                                 buy_price_ptr.write(Some(data.sale_price));
+        //                                 ts_ptr.write(Some(data.transfer.ts));
+        //                                 tx_hash_ptr.write(Some(data.transfer.tx));
+        //                             }
+        //                         },
+        //                         _NftTransaction::BatchBids(data)=>{
+        //                             if &data.transfer.collection ==&collection_holding.collection && &data.transfer.token_id==&nft.token_id && &data.transfer.recipient==wallet_address{
+        //                                 let sale_price=data.sale_price.clone();
+        //                                 let market_fee=(sale_price.get(0..sale_price.len()-4).unwrap().parse::<f64>().unwrap() * 0.2) as u64;
+        //                                 let market_fee=format!("{}usei",market_fee.to_string());
                                         
-                                        market_fee_ptr.write(Some(market_fee));
-                                        royalties_fee.write(None);
-                                        buy_price_ptr.write(Some(data.sale_price));
-                                        ts_ptr.write(data.transfer.ts);
-                                        tx_hash_ptr.write(data.transfer.tx);
-                                    }
-                                },
+        //                                 market_fee_ptr.write(Some(market_fee));
+        //                                 royalties_fee_ptr.write(None);
+        //                                 buy_price_ptr.write(Some(data.sale_price));
+        //                                 ts_ptr.write(Some(data.transfer.ts));
+        //                                 tx_hash_ptr.write(Some(data.transfer.tx));
+        //                             }
+        //                         },
                     
-                                _NftTransaction::FixedSell(data)=>{
+        //                         _NftTransaction::FixedSell(data)=>{
                                     
-                                    if &data.transfer.collection ==&collection_holding.collection && &data.transfer.token_id==&nft.token_id && &data.transfer.recipient==wallet_address{
-                                        let sale_price=format!("{}usei",data.price.clone());
-                                        let market_fee=(sale_price.get(0..sale_price.len()-4).unwrap().parse::<f64>().unwrap() * 0.2) as u64;
-                                        let market_fee=format!("{}usei",market_fee.to_string());
+        //                             if &data.transfer.collection ==&collection_holding.collection && &data.transfer.token_id==&nft.token_id && &data.transfer.recipient==wallet_address{
+        //                                 let sale_price=format!("{}usei",data.price.clone());
+        //                                 let market_fee=(sale_price.get(0..sale_price.len()-4).unwrap().parse::<f64>().unwrap() * 0.2) as u64;
+        //                                 let market_fee=format!("{}usei",market_fee.to_string());
                                         
-                                        market_fee_ptr.write(Some(market_fee));
-                                        royalties_fee.write(None);
-                                        buy_price_ptr.write(Some(sale_price));
-                                        ts_ptr.write(data.transfer.ts);
-                                        tx_hash_ptr.write(data.transfer.tx);
-                                    }
-                                },
-                                _NftTransaction::Mint(data)=>{
+        //                                 market_fee_ptr.write(Some(market_fee));
+        //                                 royalties_fee_ptr.write(None);
+        //                                 buy_price_ptr.write(Some(sale_price));
+        //                                 ts_ptr.write(Some(data.transfer.ts));
+        //                                 tx_hash_ptr.write(Some(data.transfer.tx));
+        //                             }
+        //                         },
+        //                         _NftTransaction::Mint(data)=>{
 
-                                    if &data.collection==&collection_holding.collection && &data.token_id==&nft.token_id && &data.recipient==wallet_address{
-                                        market_fee_ptr.write(None);
-                                        royalties_fee.write(None);
-                                        buy_price_ptr.write(Some(format!("{}usei",data.price)));
-                                        ts_ptr.write(data.ts);
-                                        tx_hash_ptr.write(data.tx);
-                                    }
+        //                             if &data.collection==&collection_holding.collection && &data.token_id==&nft.token_id && &data.recipient==wallet_address{
+        //                                 market_fee_ptr.write(None);
+        //                                 royalties_fee_ptr.write(None);
+        //                                 buy_price_ptr.write(Some(format!("{}usei",data.price)));
+        //                                 ts_ptr.write(Some(data.ts));
+        //                                 tx_hash_ptr.write(Some(data.tx));
+        //                             }
                                     
-                                },
-                                _NftTransaction::OnlyTransfer(data)=>{
+        //                         },
+        //                         _NftTransaction::OnlyTransfer(data)=>{
                                     
-                                    if &data.collection ==&collection_holding.collection && &data.token_id==&nft.token_id && &data.recipient==wallet_address{
-                                        market_fee_ptr.write(None);
-                                        royalties_fee.write(None);
-                                        buy_price_ptr.write(None);
-                                        ts_ptr.write(data.ts);
-                                        tx_hash_ptr.write(data.tx);
-                                    }
-                                },
-                                _NftTransaction::PurchaseCart(data)=>{
+        //                             if &data.collection ==&collection_holding.collection && &data.token_id==&nft.token_id && &data.recipient==wallet_address{
+        //                                 market_fee_ptr.write(None);
+        //                                 royalties_fee_ptr.write(None);
+        //                                 buy_price_ptr.write(None);
+        //                                 ts_ptr.write(Some(data.ts));
+        //                                 tx_hash_ptr.write(Some(data.tx));
+        //                             }
+        //                         },
+        //                         _NftTransaction::PurchaseCart(data)=>{
                                     
-                                    if &data.transfer.collection ==&collection_holding.collection && &data.transfer.token_id==&nft.token_id && &data.transfer.recipient==wallet_address{
-                                        market_fee_ptr.write(Some(data.marketplace_fee));
-                                        royalties_fee.write(Some(data.royalties));
-                                        buy_price_ptr.write(Some(data.sale_price));
-                                        ts_ptr.write(data.transfer.ts);
-                                        tx_hash_ptr.write(data.transfer.tx);
-                                    }
-                                },
-                                _=>{},
-                            }
-                        });
-
-                        
-                    };
+        //                             if &data.transfer.collection ==&collection_holding.collection && &data.transfer.token_id==&nft.token_id && &data.transfer.recipient==wallet_address{
+        //                                 market_fee_ptr.write(Some(data.marketplace_fee));
+        //                                 royalties_fee_ptr.write(Some(data.royalties));
+        //                                 buy_price_ptr.write(Some(data.sale_price));
+        //                                 ts_ptr.write(Some(data.transfer.ts));
+        //                                 tx_hash_ptr.write(Some(data.transfer.tx));
+        //                             }
+        //                         },
+        //                         _=>{},
+        //                     }
+        //                 });
+        //             };
            
-                    unsafe{
+        //             unsafe{
 
-                        let buy_price=(*buy_price_ptr).clone();
-                      
-                        let floor_price=(*floor_price_ptr).clone();
-                        let market_fee=(*market_fee_ptr).clone();
-                        let royalties_fee=(*royalties_fee_ptr).clone();
+        //                 let buy_price=buy_price_ptr.assume_init_read();
+        //                 let floor_price=floor_price_ptr.assume_init_read();
+        //                 let market_fee=market_fee_ptr.assume_init_read();
+        //                 let royalties_fee=royalties_fee_ptr.assume_init_read();
+        //                 let ts=ts_ptr.assume_init_read();
+        //                 let tx_hash=tx_hash_ptr.assume_init_read();
+        //                 let unrealized_gains=unrealized_gains_ptr.assume_init_read();
 
-                        if floor_price.is_none(){
-                             unrealized_gains_ptr.write(None)
-                        }else if floor_price.is_some() && buy_price.is_some() && market_fee.is_some() && royalties_fee.is_some(){
+
+        //                 if floor_price.is_none(){
+        //                     unrealized_gains_ptr.write(None);
+        //                 }else if floor_price.is_some() && buy_price.is_some() && market_fee.is_some() && royalties_fee.is_some(){
                             
-                            let bp=buy_price.unwrap();
-                            let fp=floor_price.unwrap();
-                            let mf=market_fee.unwrap();
-                            let rf=royalties_fee.unwrap();
+        //                     let bp=buy_price.clone().unwrap();
+        //                     let fp=floor_price.clone().unwrap();
+        //                     let mf=market_fee.clone().unwrap();
+        //                     let rf=royalties_fee.clone().unwrap();
 
-                            // 获取 buy price  floor price   market fee roylties fee
-                            let bp=bp.get(0..bp.len()-4).unwrap().parse::<i64>().unwrap();  
-                            let fp=fp.get(0..fp.len()-4).unwrap().parse::<i64>().unwrap();
-                            let mf=mf.get(0..mf.len()-4).unwrap().parse::<i64>().unwrap();
-                            let rf=rf.get(0..rf.len()-4).unwrap().parse::<i64>().unwrap();
+        //                     // 获取 buy price  floor price   market fee roylties fee
+        //                     let bp=bp.get(0..bp.len()-4).unwrap().parse::<i64>().unwrap();  
+        //                     let fp=fp.get(0..fp.len()-4).unwrap().parse::<i64>().unwrap();
+        //                     let mf=mf.get(0..mf.len()-4).unwrap().parse::<i64>().unwrap();
+        //                     let rf=rf.get(0..rf.len()-4).unwrap().parse::<i64>().unwrap();
 
-                            let ugp:i64= fp - bp-mf-rf;
-                            let ugp=format!("{}usei",ugp.to_string());
-                            unrealized_gains_ptr.write(Some(ugp));
+        //                     let ugp:i64= fp - bp-mf-rf;
+        //                     let ugp=format!("{}usei",ugp.to_string());
+        //                     unrealized_gains_ptr.write(Some(ugp));
                         
-                        }else if floor_price.is_some() && buy_price.is_some() && market_fee.is_some()  {
+        //                 }else if floor_price.is_some() && buy_price.is_some() && market_fee.is_some()  {
                             
-                            let bp=buy_price.unwrap();
-                            let fp=floor_price.unwrap();
-                            let mf=market_fee.unwrap();
+        //                     let bp=buy_price.clone().unwrap();
+        //                     let fp=floor_price.clone().unwrap();
+        //                     let mf=market_fee.clone().unwrap();
 
-                            // 获取 buy price  floor price   market fee roylties fee
-                            let bp=bp.get(0..bp.len()-4).unwrap().parse::<i64>().unwrap();  
-                            let fp=fp.get(0..fp.len()-4).unwrap().parse::<i64>().unwrap();
-                            let mf=mf.get(0..mf.len()-4).unwrap().parse::<i64>().unwrap();
+        //                     // 获取 buy price  floor price   market fee roylties fee
+        //                     let bp=bp.get(0..bp.len()-4).unwrap().parse::<i64>().unwrap();  
+        //                     let fp=fp.get(0..fp.len()-4).unwrap().parse::<i64>().unwrap();
+        //                     let mf=mf.get(0..mf.len()-4).unwrap().parse::<i64>().unwrap();
 
-                            let ugp:i64= fp - bp-mf;
-                            let ugp=format!("{}usei",ugp.to_string());
-                            unrealized_gains_ptr.write(Some(ugp));
+        //                     let ugp:i64= fp - bp-mf;
+        //                     let ugp=format!("{}usei",ugp.to_string());
+        //                     unrealized_gains_ptr.write(Some(ugp));
                         
-                        }else if floor_price.is_some() && buy_price.is_some() {
+        //                 }else if floor_price.is_some() && buy_price.is_some() {
                            
-                            let bp=buy_price.unwrap();
-                            let fp=floor_price.unwrap();
+        //                     let bp=buy_price.clone().unwrap();
+        //                     let fp=floor_price.clone().unwrap();
                             
-                             // 获取 buy price  floor price   market fee roylties fee
-                            let bp=bp.get(0..bp.len()-4).unwrap().parse::<i64>().unwrap();  
-                            let fp=fp.get(0..fp.len()-4).unwrap().parse::<i64>().unwrap();
+        //                      // 获取 buy price  floor price   market fee roylties fee
+        //                     let bp=bp.get(0..bp.len()-4).unwrap().parse::<i64>().unwrap();  
+        //                     let fp=fp.get(0..fp.len()-4).unwrap().parse::<i64>().unwrap();
 
-                            let ugp:i64= fp - bp;
-                            let ugp=format!("{}usei",ugp.to_string());
-                            unrealized_gains_ptr.write(Some(ugp));
+        //                     let ugp:i64= fp - bp;
+        //                     let ugp=format!("{}usei",ugp.to_string());
+        //                     unrealized_gains_ptr.write(Some(ugp));
                         
-                        }else if floor_price.is_some() && buy_price.is_none() && market_fee.is_none() && royalties_fee.is_none() {
-                            let ugp=floor_price.unwrap();
-                            unrealized_gains_ptr.write(Some(ugp));
-                        }
+        //                 }else if floor_price.is_some() && buy_price.is_none() && market_fee.is_none() && royalties_fee.is_none() {
+        //                     let ugp=floor_price.clone().unwrap();
+        //                     unrealized_gains_ptr.write(Some(ugp));
+        //                 }
                       
-                        user_nft_holding.push(
-                            UserNft { 
-                                name: nft.name.clone(), 
-                                token_id:nft.token_id.clone(), 
-                                key: nft.key.clone(), 
-                                image: nft.image.clone(), 
-                                floor_price: (*floor_price_ptr).clone(), 
-                                royalty_percentage:nft.royalty_percentage.clone(),
-                                attributes: nft.attributes.clone(), 
-                                buy_price: (*buy_price_ptr).clone(), 
-                                royalties_fee: (*royalties_fee_ptr).clone(), 
-                                market_fee: (*market_fee_ptr).clone(), 
-                                unrealized_gains: (*unrealized_gains_ptr).clone(),
-                                ts:(*ts_ptr).clone(),
-                                tx_hash:(*tx_hash_ptr).clone()
-                            }
-                        );
+        //                 user_nft_holding.push(
+        //                     UserNft { 
+        //                         name: nft.name.clone(), 
+        //                         token_id:nft.token_id.clone(), 
+        //                         key: nft.key.clone(), 
+        //                         image: nft.image.clone(), 
+        //                         floor_price: floor_price, 
+        //                         royalty_percentage:nft.royalty_percentage.clone(),
+        //                         attributes: nft.attributes.clone(), 
+        //                         buy_price: buy_price, 
+        //                         royalties_fee: royalties_fee, 
+        //                         market_fee: market_fee, 
+        //                         unrealized_gains:unrealized_gains,
+        //                         ts:ts,
+        //                         tx_hash:tx_hash,
+        //                     }
+        //                 );
                         
-                    };
+        //             };
 
-                });
+        //         });
 
-                // println!("{:?}",user_nft_holding);
+        //         // println!("{:?}",user_nft_holding);
 
-                user_collection_holding.push(
-                    UserCollectionHold{
-                        name:collection_holding.name.clone(),
-                        symbol:collection_holding.symbol.clone(),
-                        contract:collection_holding.collection.clone(),
-                        creator:collection_holding.creator.clone(),
-                        floor_price:collection_floor_price.clone(),
-                        nfts_holding:user_nft_holding,
-                    }
-                );
+        //         user_collection_holding.push(
+        //             UserCollectionHold{
+        //                 name:collection_holding.name.clone(),
+        //                 symbol:collection_holding.symbol.clone(),
+        //                 contract:collection_holding.collection.clone(),
+        //                 creator:collection_holding.creator.clone(),
+        //                 floor_price:collection_floor_price.clone(),
+        //                 nfts_holding:user_nft_holding,
+        //             }
+        //         );
 
-                // drop ptr
-                unsafe {
-                    drop(floor_price_ptr);
-                    drop(buy_price_ptr);
-                    drop(royalties_fee_ptr);
-                    drop(market_fee_ptr);
-                    drop(unrealized_gains_ptr);
-                    drop(ts_ptr);
-                    drop(tx_hash_ptr);
-                }
+        //         // drop ptr
+        //         unsafe {
+        //             drop(floor_price_ptr);
+        //             drop(buy_price_ptr);
+        //             drop(royalties_fee_ptr);
+        //             drop(market_fee_ptr);
+        //             drop(unrealized_gains_ptr);
+        //             drop(ts_ptr);
+        //             drop(tx_hash_ptr);
+        //         }
             }
-            
-            Some(
-                UserNftHolding{
-                    collections:user_collection_holding,
-                }
-            )
-
-            // println!("{:?}",user_collection_holding);
+            None
+        //     Some(UserNftHolding{collections:user_collection_holding})
         }else {
             None
         }
@@ -746,23 +732,24 @@ pub async fn get_user_trade_info_nfts(wallet_address:&str,conn:&mut PgConnection
             let user_collection_assets=user_holding_nfts.collections;
             user_collection_assets.iter().for_each(|collection|{
                 collection.nfts_holding.iter().for_each(|nft|{
-                    
-                    let ts=DateTime::parse_from_rfc3339(&nft.ts).unwrap().with_timezone(&Utc).date_naive();
-                    let duration=day_now.signed_duration_since(ts);
-                    
-                    if duration>Duration::days(360){
-                        holding_more_than_1_years_nfts.push(nft.clone())
-                    }else if duration>=Duration::days(189) {
-                        holding_6_to_12_months_nfts.push(nft.clone())
-                    }else if duration >=Duration::days(90) {
-                        holding_3_to_6_months_nfts.push(nft.clone())
-                    }else if duration >= Duration::days(28) {
-                        holding_1_to_3_months_nfts.push(nft.clone())
-                    }else if duration >=Duration::days(7) {
-                        holding_1_to_4_weeks_nfts.push(nft.clone())
-                    }else {
-                        holding_1_week_nfts.push(nft.clone())
+                    if let Some(ts)=&nft.ts{
+                        let ts=DateTime::parse_from_rfc3339(ts.as_str()).unwrap().with_timezone(&Utc).date_naive();
+                        let duration=day_now.signed_duration_since(ts);
+                        
+                        if duration>Duration::days(360){
+                            holding_more_than_1_years_nfts.push(nft.clone())
+                        }else if duration>=Duration::days(189) {
+                            holding_6_to_12_months_nfts.push(nft.clone())
+                        }else if duration >=Duration::days(90) {
+                            holding_3_to_6_months_nfts.push(nft.clone())
+                        }else if duration >= Duration::days(28) {
+                            holding_1_to_3_months_nfts.push(nft.clone())
+                        }else if duration >=Duration::days(7) {
+                            holding_1_to_4_weeks_nfts.push(nft.clone())
+                        }else {
+                            holding_1_week_nfts.push(nft.clone())
                     }
+                }
                 })
             });
             unsafe {
@@ -963,7 +950,7 @@ async fn get_collection_nfts_floorprice(hold_collection_keys:&HashMap<String,Vec
     
     let mut handles:Vec<tokio::task::JoinHandle<()>>=vec![];
     
-    let conn=Arc::new(Mutex::new(client_db().await.unwrap()));
+    let conn=Arc::new(client_db().await.unwrap());
     
     
     for collection in hold_collection_keys.clone(){
@@ -979,7 +966,7 @@ async fn get_collection_nfts_floorprice(hold_collection_keys:&HashMap<String,Vec
             let mut floor_price:HashMap<String,Option<String>>=HashMap::new();
             let permit=semaphore.acquire().await.unwrap();
             let  collection_nfts_floorprice=&mut collection_nfts_floorprice.lock().await;
-            let mut conn=conn.lock().await;
+            let mut conn=conn.acquire().await.unwrap();
             let mut floor_price:HashMap<String,Option<String>>=HashMap::new();
 
 
@@ -1057,20 +1044,22 @@ async fn get_collection_nfts_floorprice(hold_collection_keys:&HashMap<String,Vec
 
 
 
+#[cfg(test)]
 mod db_tests{
     use super::*;
 
 
     #[tokio::test]
     async fn test_db()  {
-        let mut conn=client_db().await.unwrap();
-        let a=get_user_income_holding_nfts("sei16zjp47vwu48uvjdetc3rn477d8td5dlwnsd0n4", &mut conn).await;
-        println!("{:#?}",a)
-        // let b=search_contract_createauctions("sei13l8rdgguhhmfpe9mqfp0q6ywnw068gmf46tgadvjvdjwnd89ymyq85nnw8", &mut conn).await;
-        // println!("{:?}",b);
+        let mut conn=client_db().await.unwrap().acquire().await.unwrap();
 
-     
-        
+        // sei1067kxqmyhtg3smhjdl6jrg4mfthxprzav4zpq0
+        // sei1hyg745gqqlnjrdh2q684aly4wz875h6hadh3ek
 
+        // sei16zjp47vwu48uvjdetc3rn477d8td5dlwnsd0n4
+        let a=get_user_nfts_holidng("sei16zjp47vwu48uvjdetc3rn477d8td5dlwnsd0n4", &mut conn).await;
+        // let a=search_user("sei16zjp47vwu48uvjdetc3rn477d8td5dlwnsd0n4", &mut conn).await;
+        println!("{:#?}",a);
+             
     }
 }

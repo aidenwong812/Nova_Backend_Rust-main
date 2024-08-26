@@ -1,4 +1,4 @@
-use std::{collections::HashMap, error::Error};
+use std::{collections::HashMap, error::Error, ops::Neg};
 use crate::token_apis::response_structs::TokenRouteData;
 use anyhow::{anyhow, Result};
 use super::response_structs::{self, TokenTradeInfo, TokenTransaction, UserTokenHolding, UserTopLossTokenInfo, UserTopToken};
@@ -14,12 +14,17 @@ pub async fn get_user_tokens_holding(wallet_address:&str,conn:&mut PgConnection)
     if let Ok(balances)=get_wallet_balances(wallet_address).await{
 
         let mut re_rp:Vec<UserTokenHolding>=vec![]; 
+
         if let Some(user_info)=search_user(wallet_address, conn).await{
            
-            let user_token_transactions=user_info.token_transactions;
+            let mut user_token_transactions=user_info.token_transactions;
             for token in balances{
                 
                 if token.denom == "usei"{
+                    
+                    let mut usei_transactions_clone=user_token_transactions.clone();
+                    usei_transactions_clone.retain(|transaction| transaction.source_token=="usei" || transaction.target_token=="usei");
+                    
                     re_rp.push(UserTokenHolding{
                         name:token.denom.to_owned(),
                         demon:token.denom,
@@ -28,7 +33,7 @@ pub async fn get_user_tokens_holding(wallet_address:&str,conn:&mut PgConnection)
                         amount:token.amount.to_owned(),
                         worth_usei:Some(token.amount.to_owned()),
                         buy_price:None,
-                        token_transactions:user_token_transactions.clone().retain(|transaction| transaction.target_token=="usei" || transaction.source_amount=="usei")
+                        token_transactions:usei_transactions_clone
                     })
                 }else if token.denom.get(0..7).unwrap()=="factory"{
                     
@@ -57,9 +62,9 @@ pub async fn get_user_tokens_holding(wallet_address:&str,conn:&mut PgConnection)
 
                     demon_transactions.iter().for_each(|t|{
                         if t.target_token==token.denom{
-                            buys.push((t.ts,t.source_amount.parse::<usize>().unwrap(),t.target_amount.parse::<usize>().unwrap()))
+                            buys.push((t.ts.clone(),t.source_amount.parse::<usize>().unwrap(),t.target_amount.parse::<usize>().unwrap()))
                         }else {
-                            sells.push((t.ts,t.target_amount.parse::<usize>().unwrap(),t.source_amount.parse::<usize>().unwrap()))
+                            sells.push((t.ts.clone(),t.target_amount.parse::<usize>().unwrap(),t.source_amount.parse::<usize>().unwrap()))
                         }
                     });
 
@@ -75,12 +80,14 @@ pub async fn get_user_tokens_holding(wallet_address:&str,conn:&mut PgConnection)
                         let swap_info=&swap_info[0];
                         let decimals=swap_info.decimals_in;
                         let amount_out=&swap_info.amount_out; 
+                        let name=&swap_info.denom_in;
                         re_rp.push(UserTokenHolding { 
-                            name: demon.to_owned(), 
+                            name: name.to_string(), 
                             demon:token.denom,
                             decimals:Some(decimals),
                             logo_url:None,
                             amount:token.amount , 
+                            buy_price:None,
                             worth_usei: Some(amount_out.to_owned()), 
                             token_transactions: demon_transactions })
                     }else {
@@ -90,6 +97,7 @@ pub async fn get_user_tokens_holding(wallet_address:&str,conn:&mut PgConnection)
                             decimals:None,
                             logo_url:None,
                             amount:token.amount , 
+                            buy_price:None,
                             worth_usei: None,
                             token_transactions: demon_transactions })
                     }
@@ -106,13 +114,15 @@ pub async fn get_user_tokens_holding(wallet_address:&str,conn:&mut PgConnection)
                             let swap_info=&swap_info[0];
                             let decimals=swap_info.decimals_in;
                             let amount_out=&swap_info.amount_out; 
-                            
+                            let name=&swap_info.denom_in;
+
                             re_rp.push(UserTokenHolding { 
-                                name: ibc.base_denom.clone() ,
+                                name: name.to_string() ,
                                 demon:token.denom,
                                 decimals: Some(decimals),
                                 logo_url:Some(format!("https://raw.githubusercontent.com/astroport-fi/astroport-token-lists/main/img/{}.svg",ibc.base_denom.get(1..).unwrap())), 
                                 amount: token.amount, 
+                                buy_price:None,
                                 worth_usei: Some(amount_out.to_owned()), 
                                 token_transactions: vec![] })
                         }else {
@@ -122,6 +132,7 @@ pub async fn get_user_tokens_holding(wallet_address:&str,conn:&mut PgConnection)
                                 decimals: None,
                                 logo_url:Some(format!("https://raw.githubusercontent.com/astroport-fi/astroport-token-lists/main/img/{}.svg",ibc.base_denom.get(1..).unwrap())), 
                                 amount: token.amount, 
+                                buy_price:None,
                                 worth_usei: None, 
                                 token_transactions: vec![] })
                         }
@@ -130,13 +141,15 @@ pub async fn get_user_tokens_holding(wallet_address:&str,conn:&mut PgConnection)
                             let swap_info=&swap_info[0];
                             let decimals=swap_info.decimals_in;
                             let amount_out=&swap_info.amount_out; 
+                            let name=&swap_info.denom_in;
                             
                             re_rp.push(UserTokenHolding { 
-                                name: token.denom.clone() ,
+                                name: name.to_string() ,
                                 demon:token.denom,
                                 decimals: Some(decimals),
                                 logo_url:None,  
                                 amount: token.amount, 
+                                buy_price:None,
                                 worth_usei: Some(amount_out.to_owned()), 
                                 token_transactions: vec![] })
                         }else {
@@ -146,6 +159,7 @@ pub async fn get_user_tokens_holding(wallet_address:&str,conn:&mut PgConnection)
                                 decimals: None,
                                 logo_url:None,
                                 amount: token.amount, 
+                                buy_price:None,
                                 worth_usei: None, 
                                 token_transactions: vec![] })
                         }
@@ -154,7 +168,9 @@ pub async fn get_user_tokens_holding(wallet_address:&str,conn:&mut PgConnection)
                 }else {
                     let amount=token.amount.parse::<usize>().unwrap();
                     if let Ok(token_info) =get_token_smartcontract_info(&token.denom).await  {
+                        
                         if let Ok(swap_info)=token_swap_routes(&token.denom,"usei", &amount).await{
+
                             let swap_info=&swap_info[0];
                             let decimals=swap_info.decimals_in;
                             let amount_out=&swap_info.amount_out;
@@ -163,7 +179,8 @@ pub async fn get_user_tokens_holding(wallet_address:&str,conn:&mut PgConnection)
                                 demon:token.denom,
                                 decimals:Some(token_info.decimals), 
                                 logo_url:Some(token_info.logo_url),
-                                amount: token.amount, 
+                                amount: token.amount,
+                                buy_price:None,
                                 worth_usei: Some(amount_out.to_owned()), 
                                 token_transactions: vec![] })
                         }else {
@@ -173,6 +190,7 @@ pub async fn get_user_tokens_holding(wallet_address:&str,conn:&mut PgConnection)
                                 decimals:Some(token_info.decimals), 
                                 logo_url:Some(token_info.logo_url),
                                 amount: token.amount, 
+                                buy_price:None,
                                 worth_usei: None,
                                 token_transactions: vec![] })
                         }
@@ -187,6 +205,7 @@ pub async fn get_user_tokens_holding(wallet_address:&str,conn:&mut PgConnection)
                                 decimals:Some(decimals), 
                                 logo_url:None,
                                 amount: token.amount, 
+                                buy_price:None,
                                 worth_usei: Some(amount_out.to_owned()), 
                                 token_transactions: vec![] })
                         }else {
@@ -197,6 +216,7 @@ pub async fn get_user_tokens_holding(wallet_address:&str,conn:&mut PgConnection)
                                 logo_url:None,
                                 amount: token.amount, 
                                 worth_usei: None, 
+                                buy_price:None,
                                 token_transactions: vec![] })
                         }
                     }
@@ -206,7 +226,7 @@ pub async fn get_user_tokens_holding(wallet_address:&str,conn:&mut PgConnection)
         
        
         }else {
-
+            
             for token in balances{
 
                 if token.denom == "usei"{
@@ -220,7 +240,9 @@ pub async fn get_user_tokens_holding(wallet_address:&str,conn:&mut PgConnection)
                         buy_price:None,
                         token_transactions:vec![]
                     })
+
                 }else if token.denom.get(0..7).unwrap()=="factory"{
+            
                     let demon={
                         let mut indexs:Vec<usize>=vec![];
                         let demon_vec:Vec<char>=token.denom.chars().collect();
@@ -233,12 +255,16 @@ pub async fn get_user_tokens_holding(wallet_address:&str,conn:&mut PgConnection)
                         token.denom.get(indexs[1]+1..).unwrap()
                     };
                     let amount=token.amount.parse::<usize>().unwrap();
+                    
                     if let Ok(swap_info)=token_swap_routes(&token.denom, "usei", &amount).await{
+                        
                         let swap_info=&swap_info[0];
                         let decimals=swap_info.decimals_in;
                         let amount_out=&swap_info.amount_out; 
+                        let name=&swap_info.denom_out;
+                        
                         re_rp.push(UserTokenHolding { 
-                            name: demon.to_owned(), 
+                            name: demon.to_string(), 
                             demon:token.denom,
                             decimals:Some(decimals),
                             logo_url:None,
@@ -263,14 +289,16 @@ pub async fn get_user_tokens_holding(wallet_address:&str,conn:&mut PgConnection)
                     let amount=token.amount.parse::<usize>().unwrap();
                     
                     if let Ok(ibc)=get_ibc_info(&token.denom).await{
+
                         if let Ok(swap_info)=token_swap_routes(&token.denom,"usei", &amount).await{
                             
                             let swap_info=&swap_info[0];
                             let decimals=swap_info.decimals_in;
                             let amount_out=&swap_info.amount_out; 
+                            let name=&swap_info.denom_in;
                             
                             re_rp.push(UserTokenHolding { 
-                                name: ibc.base_denom.clone() ,
+                                name: ibc.base_denom.clone(),
                                 demon:token.denom,
                                 decimals: Some(decimals),
                                 logo_url:Some(format!("https://raw.githubusercontent.com/astroport-fi/astroport-token-lists/main/img/{}.svg",ibc.base_denom.get(1..).unwrap())), 
@@ -280,7 +308,7 @@ pub async fn get_user_tokens_holding(wallet_address:&str,conn:&mut PgConnection)
                                 token_transactions: vec![] })
                         }else {
                             re_rp.push(UserTokenHolding { 
-                                name: ibc.base_denom.clone() ,
+                                name: ibc.base_denom.clone(),
                                 demon:token.denom,
                                 decimals: None,
                                 logo_url:Some(format!("https://raw.githubusercontent.com/astroport-fi/astroport-token-lists/main/img/{}.svg",ibc.base_denom.get(1..).unwrap())), 
@@ -294,9 +322,10 @@ pub async fn get_user_tokens_holding(wallet_address:&str,conn:&mut PgConnection)
                             let swap_info=&swap_info[0];
                             let decimals=swap_info.decimals_in;
                             let amount_out=&swap_info.amount_out; 
+                            let name=&swap_info.denom_in;
                             
                             re_rp.push(UserTokenHolding { 
-                                name: token.denom.clone() ,
+                                name:name.to_string(),
                                 demon:token.denom,
                                 decimals: Some(decimals),
                                 logo_url:None,  
@@ -322,18 +351,22 @@ pub async fn get_user_tokens_holding(wallet_address:&str,conn:&mut PgConnection)
     
                 }else {
                     let amount=token.amount.parse::<usize>().unwrap();
+                    
                     if let Ok(token_info) =get_token_smartcontract_info(&token.denom).await  {
+                       
                         if let Ok(swap_info)=token_swap_routes(&token.denom,"usei", &amount).await{
                             let swap_info=&swap_info[0];
                             let decimals=swap_info.decimals_in;
                             let amount_out=&swap_info.amount_out;
+                            let name=&swap_info.denom_in;
+
                             re_rp.push(UserTokenHolding { 
-                                name: token_info.name, 
+                                name: name.to_string(), 
                                 demon:token.denom,
                                 decimals:Some(token_info.decimals), 
                                 logo_url:Some(token_info.logo_url),
                                 amount: token.amount, 
-                                worth_usei: Some(amount_out.to_owned()), 
+                                worth_usei: Some(amount_out.to_owned()),
                                 buy_price:None,
                                 token_transactions: vec![] })
                         }else {
@@ -347,13 +380,18 @@ pub async fn get_user_tokens_holding(wallet_address:&str,conn:&mut PgConnection)
                                 buy_price:None,
                                 token_transactions: vec![] })
                         }
+                    
                     }else {
+                        
                         if let Ok(swap_info)=token_swap_routes(&token.denom,"usei", &amount).await{
+
                             let swap_info=&swap_info[0];
                             let decimals=swap_info.decimals_in;
                             let amount_out=&swap_info.amount_out; 
+                            let name=&swap_info.denom_in;
+
                             re_rp.push(UserTokenHolding { 
-                                name: token.denom.clone(), 
+                                name: name.to_string(), 
                                 demon:token.denom,
                                 decimals:Some(decimals), 
                                 logo_url:None,
@@ -482,7 +520,7 @@ pub async fn get_user_top_tokens(wallet_address:&str,conn:&mut PgConnection) ->O
 
         Some(UserTopLossTokenInfo{
             top_gainers:TopGainersToken,
-            top_looser:TopLooser,
+            top_losser:TopLooser,
             unkonw:UnkonwToken
         })
     }else {
@@ -516,6 +554,8 @@ pub async fn get_user_trade_info_tokens(wallet_address:&str,conn:&mut PgConnecti
         TokenTransaction::add_data(&mut BuyTokenTransaction,buy_transactions , "buy");
         TokenTransaction::add_data(&mut SellTokenTransaction, sell_transactions, "sell");
 
+        // println!("{:#?}",AllTokenTransaction);
+
         Some(TokenTradeInfo{
             all:AllTokenTransaction,
             sell:SellTokenTransaction,
@@ -541,4 +581,17 @@ async fn token_swap_routes(source_token:&str,target_source:&str,amount:&usize)->
 }
 fn parse_unrealized_gains(unrealized_gains: &Option<String>) -> Option<i64> {
     unrealized_gains.as_ref().and_then(|s| s.parse::<i64>().ok())
+}
+
+mod tests{
+    use db::client_db;
+
+    use crate::token_apis::user::get_user_trade_info_tokens;
+
+    #[tokio::test]
+    async fn test_trade_info() {
+        let mut conn=client_db().await.unwrap().acquire().await.unwrap();
+        let a=get_user_trade_info_tokens("sei1z74y097rpp5mc34rnzemrwmsc6uadvzgda0r7f", &mut conn).await;
+        println!("{:#?}",a);
+    }
 }

@@ -20,7 +20,7 @@ pub const BASEURL:&str="http://173.0.55.178:1317";
 pub async fn get_transaction_txs_by_event<'nova_client>(
         events:&'nova_client str, 
         value:&'nova_client str,   
-    ) -> Result <Map<String,Value>,Box<dyn Error>> {
+    ) -> Result <Map<String,Value>> {
         
         
         let url=format!("{}/cosmos/tx/v1beta1/txs?events={}=%27{}%27",BASEURL,events,value);
@@ -35,12 +35,12 @@ pub async fn get_transaction_txs_by_event<'nova_client>(
         if data.get("txs").unwrap().as_array().is_some() && data.get("tx_responses").unwrap().as_array().unwrap().len()!=0{
             Ok(data.clone())
         }else {
-            Err("don't have data".into())
+            Err(anyhow!("don't have data"))
         }
     
     }
 
-pub async fn get_transaction_txs_by_tx<'nova_client>(txhash:&'nova_client str) -> Result<Value,Box<dyn Error>> {
+pub async fn get_transaction_txs_by_tx<'nova_client>(txhash:&'nova_client str) -> Result<Value> {
         
         let url=format!("{}/cosmos/tx/v1beta1/txs/{}",BASEURL,txhash);
         let client=&Client::new();
@@ -56,12 +56,12 @@ pub async fn get_transaction_txs_by_tx<'nova_client>(txhash:&'nova_client str) -
             Ok(rp_data.clone())
         }else {
             
-            Err("don't have data || erro transaction ".into())
+            Err(anyhow!("don't have data || erro transaction"))
         }
         
     }
 
-pub async fn get_last_height() -> Result<u64,Box<dyn Error>>  {
+pub async fn get_last_height() -> Result<u64>  {
     
     let url=format!("{}/cosmos/base/tendermint/v1beta1/blocks/latest",BASEURL);
     let client=&Client::new();
@@ -81,7 +81,7 @@ pub async fn get_last_height() -> Result<u64,Box<dyn Error>>  {
 }
 
 
-pub async fn get_txs_by_block_height(height:u64) -> Result<Map<String,Value>,Box<dyn Error>> {
+pub async fn get_txs_by_block_height(height:u64) -> Result<Map<String,Value>> {
 
     let url=format!("{}/cosmos/tx/v1beta1/txs/block/{}",BASEURL,height);
     let client=&Client::new();
@@ -245,6 +245,27 @@ pub async fn get_nft_info(contract_address:String,token_id:String) ->Option<NftT
             Err(e)=>None,
         }
 
+}
+
+pub async fn get_nft_owner(contract_address:&str,token_id:&str) -> Option<String> {
+    let client=Client::new();
+    let query=encode(json!({"owner_of":{"token_id":token_id}}).to_string());
+    match client.get(format!("{}/cosmwasm/wasm/v1/contract/{}/smart/{}",BASEURL,contract_address,query)).send().await{
+        Ok(data)=>{
+            let data:Value=data.json().await.expect("feild json err");
+            let data=data.get("data");
+            if data.is_some(){
+                if let Some(ower)=data.unwrap().as_object().unwrap().get("owner"){
+                    Some(ower.as_str().unwrap().to_string())   
+                }else {
+                    None
+                }
+            }else {
+                None
+            }
+        },
+        _=>{None}
+                                }
 }
 
 pub async fn get_all_nft_info(contract_address:String,max_concurrent_tasks: usize) -> Option<Collection> {

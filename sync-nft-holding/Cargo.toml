@@ -1,0 +1,15 @@
+[package]
+name = "sync-nft-holding"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1.0.203", features = ["derive"] }
+serde_json={version = "1.0.118"}
+anyhow="1.0.86"
+sqlx = { version = "0.7.4", features = ["postgres", "runtime-tokio-native-tls", "macros"] }
+tokio = { version = "1.38.0", features = ["full"] }
+chrono = {version = "0.4.38",features=["serde"]}
+dotenv = {version="0.15.0"}
+sei-client={path=  "../sei-client"}
+db={path="../db"}

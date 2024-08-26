@@ -37,8 +37,8 @@ pub struct  UserNft{
     pub royalties_fee:Option<String>,
     pub market_fee:Option<String>,
     pub unrealized_gains:Option<String>,
-    pub ts:String,
-    pub tx_hash:String,
+    pub ts:Option<String>,
+    pub tx_hash:Option<String>,
 }
 
 #[derive(Serialize, Deserialize,Clone,Debug)]

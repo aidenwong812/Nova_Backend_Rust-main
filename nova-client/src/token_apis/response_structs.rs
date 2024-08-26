@@ -61,7 +61,7 @@ pub struct UserTopToken{
 #[derive(Serialize, Deserialize,Clone,Debug)]
 pub struct UserTopLossTokenInfo{
     pub top_gainers:Vec<UserTopToken>,
-    pub top_looser:Vec<UserTopToken>,
+    pub top_losser:Vec<UserTopToken>,
     pub unkonw:Vec<UserTopToken>
 }
 
@@ -92,7 +92,7 @@ pub struct TokenTransaction{
 
         transactions.iter().for_each(|transaction|{
             let date:NaiveDateTime=DateTime::parse_from_rfc3339(&transaction.ts).unwrap().with_timezone(&Utc).naive_utc();
-
+            
             day_transactions.entry(date.clone().date()).or_insert_with(Vec::new).push(transaction.clone());
 
             let iso_week=date.iso_week();
@@ -102,7 +102,9 @@ pub struct TokenTransaction{
 
         });
 
+
         if trade_type=="all"{
+
             day_transactions.into_iter().for_each(|(day,transactions)|{
                 let mut sale_price:Vec<usize>=vec![];
                 transactions.iter().for_each(|transaction|{
@@ -138,9 +140,9 @@ pub struct TokenTransaction{
                 });
                 if sale_price.len()>0{
                     let volume:usize=sale_price.iter().sum();
-                    self.day.entry(format!("{}-{}",day.clone().0.to_string(),day.clone().1.to_string())).or_insert_with(||_TokenTransaction { transaction_amount: transactions.len(), total_volume: format!("{}usei",volume.to_string())});
+                    self.week.entry(format!("{}-{}",day.clone().0.to_string(),day.clone().1.to_string())).or_insert_with(||_TokenTransaction { transaction_amount: transactions.len(), total_volume: format!("{}usei",volume.to_string())});
                 }else {
-                    self.day.entry(format!("{}-{}",day.clone().0.to_string(),day.clone().1.to_string())).or_insert_with(||_TokenTransaction { transaction_amount: transactions.len(), total_volume: "0usei".to_string()});
+                    self.week.entry(format!("{}-{}",day.clone().0.to_string(),day.clone().1.to_string())).or_insert_with(||_TokenTransaction { transaction_amount: transactions.len(), total_volume: "0usei".to_string()});
 
                 }
             });
@@ -159,9 +161,9 @@ pub struct TokenTransaction{
                 });
                 if sale_price.len()>0{
                     let volume:usize=sale_price.iter().sum();
-                    self.day.entry(format!("{}-{}",day.clone().0.to_string(),day.clone().1.to_string())).or_insert_with(||_TokenTransaction { transaction_amount: transactions.len(), total_volume: format!("{}usei",volume.to_string())});
+                    self.month.entry(format!("{}-{}",day.clone().0.to_string(),day.clone().1.to_string())).or_insert_with(||_TokenTransaction { transaction_amount: transactions.len(), total_volume: format!("{}usei",volume.to_string())});
                 }else {
-                    self.day.entry(format!("{}-{}",day.clone().0.to_string(),day.clone().1.to_string())).or_insert_with(||_TokenTransaction { transaction_amount: transactions.len(), total_volume: "0usei".to_string()});
+                    self.month.entry(format!("{}-{}",day.clone().0.to_string(),day.clone().1.to_string())).or_insert_with(||_TokenTransaction { transaction_amount: transactions.len(), total_volume: "0usei".to_string()});
 
                 }
             });
@@ -188,9 +190,9 @@ pub struct TokenTransaction{
                 });
                 if sale_price.len()>0{
                     let volume:usize=sale_price.iter().sum();
-                    self.day.entry(format!("{}-{}",day.clone().0.to_string(),day.clone().1.to_string())).or_insert_with(||_TokenTransaction { transaction_amount: transactions.len(), total_volume: format!("{}usei",volume.to_string())});
+                    self.week.entry(format!("{}-{}",day.clone().0.to_string(),day.clone().1.to_string())).or_insert_with(||_TokenTransaction { transaction_amount: transactions.len(), total_volume: format!("{}usei",volume.to_string())});
                 }else {
-                    self.day.entry(format!("{}-{}",day.clone().0.to_string(),day.clone().1.to_string())).or_insert_with(||_TokenTransaction { transaction_amount: transactions.len(), total_volume: "0usei".to_string()});
+                    self.week.entry(format!("{}-{}",day.clone().0.to_string(),day.clone().1.to_string())).or_insert_with(||_TokenTransaction { transaction_amount: transactions.len(), total_volume: "0usei".to_string()});
 
                 }
             });
@@ -202,9 +204,9 @@ pub struct TokenTransaction{
                 });
                 if sale_price.len()>0{
                     let volume:usize=sale_price.iter().sum();
-                    self.day.entry(format!("{}-{}",day.clone().0.to_string(),day.clone().1.to_string())).or_insert_with(||_TokenTransaction { transaction_amount: transactions.len(), total_volume: format!("{}usei",volume.to_string())});
+                    self.month.entry(format!("{}-{}",day.clone().0.to_string(),day.clone().1.to_string())).or_insert_with(||_TokenTransaction { transaction_amount: transactions.len(), total_volume: format!("{}usei",volume.to_string())});
                 }else {
-                    self.day.entry(format!("{}-{}",day.clone().0.to_string(),day.clone().1.to_string())).or_insert_with(||_TokenTransaction { transaction_amount: transactions.len(), total_volume: "0usei".to_string()});
+                    self.month.entry(format!("{}-{}",day.clone().0.to_string(),day.clone().1.to_string())).or_insert_with(||_TokenTransaction { transaction_amount: transactions.len(), total_volume: "0usei".to_string()});
 
                 }
             });
@@ -230,9 +232,9 @@ pub struct TokenTransaction{
                 });
                 if sale_price.len()>0{
                     let volume:usize=sale_price.iter().sum();
-                    self.day.entry(format!("{}-{}",day.clone().0.to_string(),day.clone().1.to_string())).or_insert_with(||_TokenTransaction { transaction_amount: transactions.len(), total_volume: format!("{}usei",volume.to_string())});
+                    self.week.entry(format!("{}-{}",day.clone().0.to_string(),day.clone().1.to_string())).or_insert_with(||_TokenTransaction { transaction_amount: transactions.len(), total_volume: format!("{}usei",volume.to_string())});
                 }else {
-                    self.day.entry(format!("{}-{}",day.clone().0.to_string(),day.clone().1.to_string())).or_insert_with(||_TokenTransaction { transaction_amount: transactions.len(), total_volume: "0usei".to_string()});
+                    self.week.entry(format!("{}-{}",day.clone().0.to_string(),day.clone().1.to_string())).or_insert_with(||_TokenTransaction { transaction_amount: transactions.len(), total_volume: "0usei".to_string()});
 
                 }
             });
@@ -244,9 +246,9 @@ pub struct TokenTransaction{
                 });
                 if sale_price.len()>0{
                     let volume:usize=sale_price.iter().sum();
-                    self.day.entry(format!("{}-{}",day.clone().0.to_string(),day.clone().1.to_string())).or_insert_with(||_TokenTransaction { transaction_amount: transactions.len(), total_volume: format!("{}usei",volume.to_string())});
+                    self.month.entry(format!("{}-{}",day.clone().0.to_string(),day.clone().1.to_string())).or_insert_with(||_TokenTransaction { transaction_amount: transactions.len(), total_volume: format!("{}usei",volume.to_string())});
                 }else {
-                    self.day.entry(format!("{}-{}",day.clone().0.to_string(),day.clone().1.to_string())).or_insert_with(||_TokenTransaction { transaction_amount: transactions.len(), total_volume: "0usei".to_string()});
+                    self.month.entry(format!("{}-{}",day.clone().0.to_string(),day.clone().1.to_string())).or_insert_with(||_TokenTransaction { transaction_amount: transactions.len(), total_volume: "0usei".to_string()});
 
                 }
             });

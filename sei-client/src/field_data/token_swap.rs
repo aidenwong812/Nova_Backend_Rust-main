@@ -1,6 +1,6 @@
 use serde_json::Value;
 use super::field_data_structions::TokenSwap;
-use super::{data_structions::{HashData,TxResponse,Log,Event,Attribute}};
+use super::data_structions::{HashData,TxResponse,Log,Event,Attribute};
 
 
 pub fn swap_datas(hash_data:HashData) -> Vec<TokenSwap>{
@@ -47,8 +47,9 @@ pub fn swap_datas(hash_data:HashData) -> Vec<TokenSwap>{
                     token_swap_datas.push(token_swap);
                 }else {
                     //低级 token swap
-                    let token_swap=normal_token_swap(wasm.attributes.clone(), tx.clone(), ts.clone(), account);
-                    token_swap_datas.push(token_swap);
+                    if let Some(token_swap)=normal_token_swap(wasm.attributes.clone(), tx.clone(), ts.clone(), account){
+                        token_swap_datas.push(token_swap);
+                    }
                 }
             },
             _=>continue,
@@ -59,7 +60,7 @@ pub fn swap_datas(hash_data:HashData) -> Vec<TokenSwap>{
 
 }   
 
-fn normal_token_swap(attributes:Vec<Attribute>,tx:String,ts:String,account:String)-> TokenSwap{
+fn normal_token_swap(attributes:Vec<Attribute>,tx:String,ts:String,account:String)-> Option<TokenSwap>{
 
     let trade_type="token_swap".to_string();
 
@@ -67,31 +68,37 @@ fn normal_token_swap(attributes:Vec<Attribute>,tx:String,ts:String,account:Strin
     let trade_type="token_swap".to_string();
     
     for index in (0..attributes.len()){
-        if attributes[index].value=="swap"{
+        if attributes[index].value=="swap" && attributes[index+1].key=="sender" && attributes[index+2].key =="receiver"{
             swap_indexs.push(index);
         }
     }
 
-    let first_swap=swap_indexs[0];
+    if !swap_indexs.is_empty(){
 
-    let last_swap=swap_indexs.last().unwrap().clone();
+    
+        let first_swap=swap_indexs[0];
 
-    let source_token=attributes[first_swap+3].value.clone();
-    let source_amount=attributes[first_swap+5].value.clone();
+        let last_swap=swap_indexs.last().unwrap().clone();
 
-    let target_token=attributes[last_swap+4].value.clone();
-    let target_amount=attributes[last_swap+6].value.clone();
-  
-    return  TokenSwap{
-            account:account,
-            source_token:source_token,
-            target_token:target_token,
-            source_amount:source_amount,
-            target_amount:target_amount,
-            trade_type:trade_type,
-            tx:tx,
-            ts:ts,
-        }
+        let source_token=attributes[first_swap+3].value.clone();
+        let source_amount=attributes[first_swap+5].value.clone();
+
+        let target_token=attributes[last_swap+4].value.clone();
+        let target_amount=attributes[last_swap+6].value.clone();
+    
+        return  Some(TokenSwap{
+                account:account,
+                source_token:source_token,
+                target_token:target_token,
+                source_amount:source_amount,
+                target_amount:target_amount,
+                trade_type:trade_type,
+                tx:tx,
+                ts:ts,
+            })
+    }else {
+        None
+    }
     
 
 }

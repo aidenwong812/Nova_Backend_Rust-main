@@ -1,5 +1,5 @@
 use std::error::Error;
-use std::sync::mpsc::{Sender,Receiver};
+use tokio::sync::mpsc::{Sender,Receiver};
 use std::sync::Arc;
 use serde_json::Value;
 use super::{data_structions::{Attribute, Event, HashData, Log, TxResponse}};
@@ -123,7 +123,7 @@ pub async fn nft_transaction_data(hash_data:HashData,nft_msg_tx:Arc<Sender<NftMe
             let wasm_create_auction=log.events.iter().find(|event|{event._type=="wasm-create_auction"}).unwrap();
             let data=only_create_aucton_nft(wasm_create_auction.attributes.clone(), ts.clone()).await;
             if data.is_some(){
-                nft_msg_tx.send(NftMessage::OnlyCreateAuction(data.unwrap()));
+                nft_msg_tx.send(NftMessage::OnlyCreateAuction(data.unwrap())).await;
             }
         };
 
@@ -134,7 +134,7 @@ pub async fn nft_transaction_data(hash_data:HashData,nft_msg_tx:Arc<Sender<NftMe
             let data=mint_nft_datas(wasm.attributes.clone(), tx.clone(), ts.clone()).await;
             
             if data.is_some(){
-                nft_msg_tx.send(NftMessage::Mint(data.unwrap()));
+                nft_msg_tx.send(NftMessage::Mint(data.unwrap())).await;
             }
            
         
@@ -142,7 +142,7 @@ pub async fn nft_transaction_data(hash_data:HashData,nft_msg_tx:Arc<Sender<NftMe
         
             let data=batch_bids_nfts(log.events.clone(), tx.clone(), ts.clone()).await;
             if data.is_some(){
-                nft_msg_tx.send(NftMessage::BatchBids(data.unwrap()));
+                nft_msg_tx.send(NftMessage::BatchBids(data.unwrap())).await;
             }
         
         }else if is_only_transfer_nft(&log.events) {
@@ -150,43 +150,43 @@ pub async fn nft_transaction_data(hash_data:HashData,nft_msg_tx:Arc<Sender<NftMe
             let wasm=log.events.iter().find(|event|{event._type=="wasm"}).unwrap();
             let data=only_transfer_nft(wasm.attributes.clone(), tx.clone(), ts.clone()).await;
             if data.is_some(){
-                nft_msg_tx.send(NftMessage::OnlyTransferNft(data.unwrap()));
+                nft_msg_tx.send(NftMessage::OnlyTransferNft(data.unwrap())).await;
             }
         
         }else if is_create_auction_nft(&log.events) {
             
             let data=create_auction_nft(log.events.clone(), tx.clone(), ts.clone()).await;
             if data.is_some(){
-                nft_msg_tx.send(NftMessage::CretaeAuctionNft(data.unwrap()));
+                nft_msg_tx.send(NftMessage::CretaeAuctionNft(data.unwrap())).await;
             }
         }else if  is_cancel_auction_nft(&log.events)  {
             
             let data=cancel_auction_nft(log.events.clone(), tx.clone(), ts.clone()).await;
             if data.is_some(){
-                nft_msg_tx.send(NftMessage::CancelAuctionNft(data.unwrap()));
+                nft_msg_tx.send(NftMessage::CancelAuctionNft(data.unwrap())).await;
             }
         
         }else if is_purchase_nft(&log.events) {
             let data=purchase_cart_nft(log.events.clone(), tx.clone(), ts.clone()).await;
             if data.is_some(){
-                nft_msg_tx.send(NftMessage::PurchaseCartNft(data.unwrap()));
+                nft_msg_tx.send(NftMessage::PurchaseCartNft(data.unwrap())).await;
             }
         
         }else if is_accept_bid_nft(&log.events){
             let data=accept_bid_nft(log.events.clone(), tx.clone(), ts.clone()).await;
             if data.is_some(){
-                nft_msg_tx.send(NftMessage::AcceptBidNft(data.unwrap()));
+                nft_msg_tx.send(NftMessage::AcceptBidNft(data.unwrap())).await;
             }
         }else if  is_fixed_sell(&log.events){
             let wasm=log.events.iter().find(|event|{event._type=="wasm"}).unwrap();
             let data=fixed_sell_nfts(wasm.attributes.clone(), tx.clone(), ts.clone()).await;
             if data.is_some(){
-                nft_msg_tx.send(NftMessage::FixedSellNft(data.unwrap()));
+                nft_msg_tx.send(NftMessage::FixedSellNft(data.unwrap())).await;
             }   
         
         }else {
-            // println!("{:?}",tx);
-            nft_msg_tx.send(NftMessage::Unkonw(tx.clone()));
+            println!("Unkonw {:?}",tx);
+            // nft_msg_tx.send(NftMessage::Unkonw(tx.clone())).await;
         }
     }
     
