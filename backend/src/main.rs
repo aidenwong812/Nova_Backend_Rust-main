@@ -4,7 +4,7 @@ mod routes;
 use actix_web::{web::{self, Data}, App, HttpServer};
 use actix_cors::Cors;
 
-use  routes::{get_holding_nfts, get_holding_nfts_top, get_income_nfts,get_nfts_trades_info, get_user_token_hold, get_user_tokens_top, get_user_trades_info};
+use  routes::{get_holding_nfts, get_holding_nfts_top, get_income_nfts,get_nfts_trades_info, get_user_token_hold, get_user_tokens_top, get_user_trades_info, post_sync_address_transaction};
 
 use dotenv::dotenv;
 use db::client_db;
@@ -51,6 +51,10 @@ async fn main() -> std::io::Result<()> {
                         .service(get_user_token_hold)   
                         .service(get_user_tokens_top)
                         .service(get_user_trades_info)
+                )
+                .service(
+                    web::scope("/utils")
+                        .service(post_sync_address_transaction)
                 )
                             
                     })

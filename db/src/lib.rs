@@ -30,7 +30,6 @@ pub async fn client_db() -> Result<Pool<Postgres>,Box<dyn Error>> {
 
 
 pub async fn search_user(wallet_address:&str,conn:&mut PgConnection) ->Option<User>{
-        println!("{}",wallet_address);
         let res=sqlx::query_as::<_,_User>(
             r#"SELECT wallet_address, nfts_holding, nfts_transactions, token_transactions FROM "User" WHERE wallet_address = $1"#
         )
@@ -78,6 +77,7 @@ pub async fn insert_user(user:User,conn:&mut PgConnection) -> Option<PgQueryResu
 pub async fn update_nfts_holding(wallet_address:&str,collection_account:&str,nft_id:&str,operate:&str,conn:&mut PgConnection) -> Option<PgQueryResult> {
         
         let nft_res=get_nft_info(collection_account.to_string(), nft_id.to_string()).await;
+        
         if nft_res.is_none(){
             return None;
         }
@@ -86,7 +86,6 @@ pub async fn update_nfts_holding(wallet_address:&str,collection_account:&str,nft
 
         if let Some(mut user) =search_user(wallet_address, conn).await  {
             
-          
             // 寻找用户的collection ，如果 有进行 追加或 删除
             if let Some(mut nfts_holding)  = user.nfts_holding.iter_mut().find(|collection|{collection.collection ==collection_account}) {
                 
@@ -97,20 +96,15 @@ pub async fn update_nfts_holding(wallet_address:&str,collection_account:&str,nft
                     }
 
                 }else if operate=="del" {
-                   
-
                     if let Some(remove_nft)=nfts_holding.nfts.iter().position(|_nft|_nft.key==nft.key){
                         nfts_holding.nfts.remove(remove_nft);
-                        
                     }
                 }
-
                 if nfts_holding.nfts.len() == 0{
                    if let Some(remove_collection)=user.nfts_holding.iter().position(|collection|collection.collection==collection_account){
                     user.nfts_holding.remove(remove_collection);
                    }
                 } 
-            
             }else {
                 
                 if operate=="add"{
@@ -163,10 +157,8 @@ pub async fn update_nfts_holding(wallet_address:&str,collection_account:&str,nft
                             count:res.count,
                             nfts:vec![nft],
                         })
-                    
                 }
             }
-            
             
             let user=User{
                 wallet_address:wallet_address.to_string(),

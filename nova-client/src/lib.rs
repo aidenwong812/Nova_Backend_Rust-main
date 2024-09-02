@@ -1,21 +1,15 @@
 pub mod nft_apis;
 pub mod token_apis;
-use tokio;
+pub mod utils;
 
+#[cfg(test)]
 mod tests{
-    use sei_client::apis::_apis::get_ibc_info;
-    use token_apis::user::{get_user_tokens_holding};
-    use db::client_db;
     use super::*;
-
+    use db::client_db;
     #[tokio::test]
-    async fn test_routes()  {
-                 // sei1huqsl8mypckr7tgqs636e7uwrfsvlq8mpmx4tz
-         // sei1d649tnttdphknafag5xwz69fd55v9rllrnrt4h
-
-         //sei1hrndqntlvtmx2kepr0zsfgr7nzjptcc72cr4ppk4yav58vvy7v3s4er8ed
+    async fn test_sync()  {
         let mut conn=client_db().await.unwrap().acquire().await.unwrap();
-        println!("{:?}",conn);
-        
+        let a=utils::sync_address_transactions::sync("sei16zjp47vwu48uvjdetc3rn477d8td5dlwnsd0n4",conn).await;
+        println!("{:#?}",a);
     }
 }

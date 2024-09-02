@@ -82,7 +82,7 @@ pub async fn get_user_tokens_holding(wallet_address:&str,conn:&mut PgConnection)
                         let amount_out=&swap_info.amount_out; 
                         let name=&swap_info.denom_in;
                         re_rp.push(UserTokenHolding { 
-                            name: name.to_string(), 
+                            name: demon.to_string(), 
                             demon:token.denom,
                             decimals:Some(decimals),
                             logo_url:None,

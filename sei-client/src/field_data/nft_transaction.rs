@@ -195,7 +195,7 @@ pub async fn nft_transaction_data(hash_data:HashData,nft_msg_tx:Arc<Sender<NftMe
 
 
 // 以下都是 wsam 中的
-async fn mint_nft_datas(wasm_attrs:Vec<Attribute>,tx:String,ts:String) ->Option<Vec<MintNFt>>{
+pub async fn mint_nft_datas(wasm_attrs:Vec<Attribute>,tx:String,ts:String) ->Option<Vec<MintNFt>>{
     
     let mut mint_nfts:Vec<MintNFt>=vec![];
     let mut mint_nft_indexs:Vec<usize>=vec![];
@@ -231,7 +231,7 @@ async fn mint_nft_datas(wasm_attrs:Vec<Attribute>,tx:String,ts:String) ->Option<
     
 }
 
-async fn batch_bids_nfts(events:Vec<Event>,tx:String,ts:String) ->Option<Vec<BatchBidsNft>>{//-> Result<()> {
+pub async fn batch_bids_nfts(events:Vec<Event>,tx:String,ts:String) ->Option<Vec<BatchBidsNft>>{//-> Result<()> {
     
     let mut batch_bids_nft_datas:Vec<BatchBidsNft>=vec![]; 
 
@@ -299,7 +299,7 @@ async fn batch_bids_nfts(events:Vec<Event>,tx:String,ts:String) ->Option<Vec<Bat
 
 }
 
-async fn only_transfer_nft(wasm_attrs:Vec<Attribute>,tx:String,ts:String) ->Option<Vec<TransferNft>> {
+pub async fn only_transfer_nft(wasm_attrs:Vec<Attribute>,tx:String,ts:String) ->Option<Vec<TransferNft>> {
     
     let mut transfer_nft_datas:Vec<TransferNft>=vec![];
     
@@ -323,7 +323,7 @@ async fn only_transfer_nft(wasm_attrs:Vec<Attribute>,tx:String,ts:String) ->Opti
     }
 }
 
-async fn fixed_sell_nfts(wasm_attrs:Vec<Attribute>,tx:String,ts:String) -> Option<Vec<FixedSellNft>> {
+pub async fn fixed_sell_nfts(wasm_attrs:Vec<Attribute>,tx:String,ts:String) -> Option<Vec<FixedSellNft>> {
     let mut fixed_sell:Vec<FixedSellNft>=vec![];
 
     wasm_attrs.iter().enumerate().for_each(|(mut index,attr)|{
@@ -348,7 +348,7 @@ async fn fixed_sell_nfts(wasm_attrs:Vec<Attribute>,tx:String,ts:String) -> Optio
     }
 }
 
-async fn create_auction_nft(events:Vec<Event>,tx:String,ts:String) ->Option<Vec<CretaeAuctionNft>>{
+pub async fn create_auction_nft(events:Vec<Event>,tx:String,ts:String) ->Option<Vec<CretaeAuctionNft>>{
 
     let mut create_auctions:Vec<CretaeAuctionNft>=vec![];    
     let mut token_ids:Vec<String>=vec![];
@@ -399,7 +399,7 @@ async fn create_auction_nft(events:Vec<Event>,tx:String,ts:String) ->Option<Vec<
     
 }
 
-async fn cancel_auction_nft(events:Vec<Event>,tx:String,ts:String) -> Option<Vec<CancelAuctionNft>> {
+pub async fn cancel_auction_nft(events:Vec<Event>,tx:String,ts:String) -> Option<Vec<CancelAuctionNft>> {
     
     let mut cancel_auctions:Vec<CancelAuctionNft>=vec![];    
     let mut token_ids:Vec<String>=vec![];
@@ -447,7 +447,7 @@ async fn cancel_auction_nft(events:Vec<Event>,tx:String,ts:String) -> Option<Vec
     }
 }
 
-async fn purchase_cart_nft(events:Vec<Event>,tx:String,ts:String) -> Option<Vec<PurcjaseCartNft>> {
+pub async fn purchase_cart_nft(events:Vec<Event>,tx:String,ts:String) -> Option<Vec<PurcjaseCartNft>> {
     
     let mut purcjase_cart:Vec<PurcjaseCartNft>=vec![];
     let mut token_ids:Vec<String>=vec![];
@@ -498,7 +498,7 @@ async fn purchase_cart_nft(events:Vec<Event>,tx:String,ts:String) -> Option<Vec<
     }
 }
 
-async fn accept_bid_nft(events:Vec<Event>,tx:String,ts:String) -> Option<Vec<AcceptBidNft>>{
+pub async fn accept_bid_nft(events:Vec<Event>,tx:String,ts:String) -> Option<Vec<AcceptBidNft>>{
     
     let mut accpet_bid_nft_datas:Vec<AcceptBidNft>=vec![];
     let mut token_ids:Vec<String>=vec![];
@@ -551,7 +551,7 @@ async fn accept_bid_nft(events:Vec<Event>,tx:String,ts:String) -> Option<Vec<Acc
 
 }
 
-async fn only_create_aucton_nft(wasm_create_auction_attrs:Vec<Attribute>,ts:String) -> Option<Vec<OnlyCreateAuction>> {
+pub async fn only_create_aucton_nft(wasm_create_auction_attrs:Vec<Attribute>,ts:String) -> Option<Vec<OnlyCreateAuction>> {
     
     let mut auctions:Vec<OnlyCreateAuction>=vec![];
 

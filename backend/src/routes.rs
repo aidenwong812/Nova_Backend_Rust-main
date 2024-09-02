@@ -1,10 +1,11 @@
 
 use actix_web::{get, http::header, post, web::{self, Data}, HttpRequest, HttpResponse, Responder, Result};
+use serde::{Deserialize, Serialize};
 
 use crate::params_structs::{DontHaveData, Wallet};
 use sqlx::PgPool;
 
-use nova_client::{nft_apis::user::{get_user_income_holding_nfts, get_user_nfts_holidng, get_user_top_nfts, get_user_trade_info_nfts}, token_apis::user::{get_user_tokens_holding, get_user_top_tokens, get_user_trade_info_tokens}};
+use nova_client::{nft_apis::user::{get_user_income_holding_nfts, get_user_nfts_holidng, get_user_top_nfts, get_user_trade_info_nfts}, token_apis::user::{get_user_tokens_holding, get_user_top_tokens, get_user_trade_info_tokens}, utils::sync_address_transactions::sync};
 
 
 #[get("/user/get_holding_nfts/{wallet_address}")]
@@ -145,6 +146,31 @@ pub async fn get_user_trades_info(
     }
 }
 
+
+
+
+//sync address transaction
+#[get("/address/{wallet_address}/post_transactions_async")]
+pub async fn post_sync_address_transaction(
+    path:web::Path<String>,
+    nova_db_pool:Data<PgPool>,
+) -> Result<impl Responder>{ 
+    let wallet_address=path.into_inner();
+    let mut conn=nova_db_pool.acquire().await.unwrap();
+
+    if sync(&wallet_address, conn).await.is_ok(){
+
+        #[derive(Deserialize,Serialize,Debug)]
+        pub struct Rp{
+            pub info:String
+        }
+
+        Ok(HttpResponse::Ok().json(Rp{info:"sync sucess".to_string()}))
+    }else {
+        Ok(HttpResponse::Ok().json(DontHaveData{wallet_address:wallet_address.clone(),result:None}))
+    }
+}
+
 #[actix_web::test]
 async fn test_route_nfts() {
     
@@ -195,3 +221,5 @@ async fn test_route_nfts() {
     //  assert!(get_user_holding_nfts_top_resp.status().is_success());
 
 }
+
+

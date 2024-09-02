@@ -60,7 +60,7 @@ pub fn swap_datas(hash_data:HashData) -> Vec<TokenSwap>{
 
 }   
 
-fn normal_token_swap(attributes:Vec<Attribute>,tx:String,ts:String,account:String)-> Option<TokenSwap>{
+pub fn normal_token_swap(attributes:Vec<Attribute>,tx:String,ts:String,account:String)-> Option<TokenSwap>{
 
     let trade_type="token_swap".to_string();
 
@@ -104,7 +104,7 @@ fn normal_token_swap(attributes:Vec<Attribute>,tx:String,ts:String,account:Strin
 }
 
 
-fn height_token_swap(attributes:Vec<Attribute>,tx:String,ts:String,account:String)->TokenSwap {
+pub fn height_token_swap(attributes:Vec<Attribute>,tx:String,ts:String,account:String)->TokenSwap {
     
     let mut swap_indexs:Vec<usize>=vec![];
     let trade_type="token_swap".to_string();
